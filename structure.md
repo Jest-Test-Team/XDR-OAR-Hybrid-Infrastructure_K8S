@@ -1,3 +1,5 @@
+
+```mermaid
 flowchart TB
     subgraph External["外部/開發環境"]
         GitLab["GitLab CI/CD\n(Isolated Runner)"]
@@ -74,3 +76,4 @@ flowchart TB
     %% YARA 動態分析流
     Yara -- "僅允許讀取樣本" --> Mongo
     Yara -- "回傳掃描結果" --> Kafka
+    ```
