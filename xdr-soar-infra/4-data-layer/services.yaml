@@ -4,8 +4,10 @@ metadata:
   name: influxdb
   namespace: xdr-soar
 spec:
+  clusterIP: None
   ports:
-  - port: 8086
+  - name: http
+    port: 8086
     targetPort: 8086
   selector:
     app: influxdb
@@ -16,9 +18,14 @@ metadata:
   name: kafka
   namespace: xdr-soar
 spec:
+  clusterIP: None
   ports:
-  - port: 9092
+  - name: client
+    port: 9092
     targetPort: 9092
+  - name: controller
+    port: 9093
+    targetPort: 9093
   selector:
     app: kafka
 ---
@@ -28,8 +35,10 @@ metadata:
   name: mongodb
   namespace: xdr-soar
 spec:
+  clusterIP: None
   ports:
-  - port: 27017
+  - name: mongo
+    port: 27017
     targetPort: 27017
   selector:
     app: mongodb
