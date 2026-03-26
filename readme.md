@@ -1,6 +1,4 @@
-這是一份為您的 **XDR/SOAR 混合雲防禦架構** 量身打造的技術文件。這份 `README.md` 不僅涵蓋了安裝步驟，更深入探討了每一層級的安全設計原理（Security Rationale），確保維運人員了解為何需要如此嚴苛的隔離機制。
 
------
 
 # XDR/SOAR Hybrid Infrastructure (Project: Aegis-Watchdog)
 
