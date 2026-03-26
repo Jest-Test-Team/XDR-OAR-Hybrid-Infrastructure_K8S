@@ -88,12 +88,34 @@ kubectl apply -f 3-k8s-network-policies/
 
 ```bash
 # 使用整合腳本啟動資料層與引擎
-bash 8-scripts/deploy-all.sh
+cd 8-scripts/
+bash deploy-all.sh
 ```
 
 -----
 
-## 6\. 維運與監控 (Maintenance)
+## 6\. 基礎設施改良 (Infrastructure Improvements - 2026-03-26)
+
+本專案已根據 `docs/repo-suggestions-todos-report.md` 完成以下核心改良：
+
+1.  **冪等部署 (Idempotency)**：新增 `Namespace` 宣告，並重構 `deploy-all.sh` 以支援重複執行。
+2.  **服務發現 (Service Discovery)**：為所有資料庫與引擎組件新增 `Service` 定義，消除對 Pod IP 的依賴。
+3.  **網路策略強化 (NetPol Hardening)**：
+    * 實作預設全阻斷 (Default Deny)。
+    * 新增 DNS 解析白名單。
+    * 建立精確的服務間通訊矩陣。
+4.  **持久化與穩定性 (Persistence & Stability)**：
+    * 為 MongoDB, Kafka, InfluxDB 啟用 `StatefulSet` 與 `volumeClaimTemplates`。
+    * 新增容器資源限制 (CPU/Memory Requests & Limits)。
+    * 導入 `readinessProbe` 與 `livenessProbe` 健康檢查。
+5.  **安全硬化 (Security Hardening)**：
+    * YARA 掃描器強制執行 `readOnlyRootFilesystem` 與能力裁減 (Capability Drop)。
+    * 全面移除 `:latest` 標籤，改採固定版本鏡像。
+    * 改良 Windows PowerShell Updater，導入 JSON Payload 驗證與 SHA-256 Hash 比對。
+
+-----
+
+## 7\. 維運與監控 (Maintenance)
 
   * **日誌查詢**：存取 Grafana 儀表板，過濾 `job="yara-scanner"` 檢視掃描歷史。
   * **模型訓練**：ML 訓練 Job 會在每天凌晨 2:00 自動從 Supabase 提取數據，並更新 MongoDB 中的 `.pt` 文件。

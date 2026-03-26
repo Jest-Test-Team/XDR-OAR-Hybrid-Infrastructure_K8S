@@ -1,0 +1,77 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: internal-allow-rules
+  namespace: xdr-soar
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow all pods in xdr-soar to talk to each other on specific ports if needed,
+  # but let's be more specific.
+  - from:
+    - podSelector:
+        matchLabels:
+          app: detection-engine
+    - podSelector:
+        matchLabels:
+          app: triton-server
+    - podSelector:
+        matchLabels:
+          app: yara-scanner
+    ports:
+    - protocol: TCP
+      port: 9092 # Kafka
+    - protocol: TCP
+      port: 27017 # MongoDB
+    - protocol: TCP
+      port: 8086 # InfluxDB
+    - protocol: TCP
+      port: 5432 # Supabase
+  - from:
+    - podSelector:
+        matchLabels:
+          app: mqtt-broker
+    ports:
+    - protocol: TCP
+      port: 9092 # MQTT to Kafka
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: kafka
+    ports:
+    - protocol: TCP
+      port: 9092
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mongodb
+    ports:
+    - protocol: TCP
+      port: 27017
+  - to:
+    - podSelector:
+        matchLabels:
+          app: influxdb
+    ports:
+    - protocol: TCP
+      port: 8086
+  - to:
+    - podSelector:
+        matchLabels:
+          app: supabase
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:
+    - podSelector:
+        matchLabels:
+          app: triton-server
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8001
