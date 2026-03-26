@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-windows-to-mqtt
+  namespace: xdr-soar
+spec:
+  podSelector:
+    matchLabels:
+      app: mqtt-broker
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 192.168.100.0/24 # 僅允許 Windows 隔離網段
+    ports:
+    - protocol: TCP
+      port: 8883

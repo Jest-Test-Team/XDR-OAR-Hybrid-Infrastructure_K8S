@@ -1,0 +1,23 @@
+stages:
+  - build
+  - push
+  - notify_update
+
+build_agent:
+  stage: build
+  tags: [isolated-runner]
+  script:
+    - echo "Building Windows EDR Agent..."
+    - pyinstaller --onefile agent_main.py
+
+push_to_mongodb:
+  stage: push
+  script:
+    - echo "Uploading binary to MongoDB GridFS..."
+    - python scripts/upload_to_gridfs.py ./dist/agent.exe
+
+notify_mqtt:
+  stage: notify_update
+  script:
+    - echo "Publishing update command to MQTT topic /agent/update..."
+    - mosquitto_pub -h mqtt.local -t "/agent/update" -m '{"action":"update", "version":"latest"}'

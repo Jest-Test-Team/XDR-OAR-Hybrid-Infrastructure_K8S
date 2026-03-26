@@ -1,0 +1,8 @@
+# Cilium CNI 配置：啟用 eBPF 與 L7 網路策略支援
+kubeProxyReplacement: strict
+k8sServiceHost: API_SERVER_IP
+k8sServicePort: 6443
+routingMode: native
+endpointRoutes:
+  enabled: true
+ipv4NativeRoutingCIDR: 10.0.0.0/8

@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: isolate-yara-scanner
+  namespace: xdr-soar
+spec:
+  podSelector:
+    matchLabels:
+      app: yara-scanner
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mongodb # 僅允許連線至 MongoDB 抓取樣本
+    ports:
+    - protocol: TCP
+      port: 27017

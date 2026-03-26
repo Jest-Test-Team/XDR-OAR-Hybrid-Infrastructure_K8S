@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ml-retraining
+  namespace: xdr-soar
+spec:
+  schedule: "0 2 * * *" # 每天凌晨 2 點執行訓練
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: training-job
+            image: ml-training:latest
+          restartPolicy: OnFailure

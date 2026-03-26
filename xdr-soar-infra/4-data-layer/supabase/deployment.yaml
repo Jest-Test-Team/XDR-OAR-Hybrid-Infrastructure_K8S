@@ -1,0 +1,19 @@
+# Supabase (PostgreSQL + GoTrue + PostgREST) 集合部署佔位符
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-core
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supabase
+  template:
+    metadata:
+      labels:
+        app: supabase
+    spec:
+      containers:
+      - name: postgres
+        image: supabase/postgres:latest

@@ -1,0 +1,10 @@
+{
+  "_comment": "VMware 進階參數硬化，防止 Windows VM 測試惡意軟體時反向入侵 Hypervisor",
+  "isolation.tools.copy.disable": "TRUE",
+  "isolation.tools.paste.disable": "TRUE",
+  "isolation.tools.dnd.disable": "TRUE",
+  "isolation.tools.setGUIOptions.enable": "FALSE",
+  "vmci0.present": "FALSE",
+  "serial0.present": "FALSE",
+  "parallel0.present": "FALSE"
+}
