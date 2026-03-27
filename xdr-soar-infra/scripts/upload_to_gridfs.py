@@ -12,6 +12,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mongo-uri", default=os.getenv("MONGO_URI", "mongodb://mongodb.xdr-soar.svc.cluster.local:27017/"))
     parser.add_argument("--database", default=os.getenv("MONGO_DATABASE", "xdr_soar"))
     parser.add_argument("--filename", default=os.getenv("GRIDFS_FILENAME", "agent.exe"))
+    parser.add_argument("--version", default=os.getenv("AGENT_VERSION", "latest"))
+    parser.add_argument("--sha256", default=os.getenv("AGENT_SHA256", ""))
+    parser.add_argument("--content-type", default="application/octet-stream")
+    parser.add_argument("--download-name", default="")
     return parser
 
 
@@ -36,8 +40,20 @@ def main() -> int:
     with args.artifact.open("rb") as handle:
         payload = handle.read()
 
-    fs.put(payload, filename=args.filename)
-    print(f"Uploaded {args.artifact} to GridFS as {args.filename}")
+    sha256 = args.sha256 or __import__("hashlib").sha256(payload).hexdigest()
+    download_name = args.download_name or f"agent-{args.version}{args.artifact.suffix or '.bin'}"
+
+    fs.put(
+        payload,
+        filename=args.filename,
+        metadata={
+            "version": args.version,
+            "sha256": sha256,
+            "content_type": args.content_type,
+            "download_name": download_name,
+        },
+    )
+    print(f"Uploaded {args.artifact} to GridFS as {args.filename} version={args.version}")
     return 0
 
 

@@ -56,3 +56,13 @@ spec:
             name: supabase
             port:
               number: 8000
+  - host: api.xdr-soar.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: firmware-api
+            port:
+              number: 8081

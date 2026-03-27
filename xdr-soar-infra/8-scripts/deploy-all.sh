@@ -34,6 +34,7 @@ echo "[$(date)] Applying Security Engine..."
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/services.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/model-repository-pvc.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/combined-engine.yaml"
+kubectl apply -f "$SCRIPT_DIR/../5-security-engine/firmware-api.yaml"
 
 # 5. Frontend UI
 echo "[$(date)] Applying Frontend UI..."

@@ -22,6 +22,7 @@ echo "[$(date)] Validating Python helper and app sources..."
 if command -v python3 >/dev/null 2>&1; then
   python3 -m py_compile \
     "$ROOT_DIR/agent_main.py" \
+    "$ROOT_DIR/apps/firmware-api/main.py" \
     "$ROOT_DIR/scripts/upload_to_gridfs.py" \
     "$ROOT_DIR/apps/detection-engine/main.py" \
     "$ROOT_DIR/apps/ml-training/main.py" \

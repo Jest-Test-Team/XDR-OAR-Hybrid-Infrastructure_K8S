@@ -26,8 +26,10 @@ build_agent:
 push_to_mongodb:
   stage: push
   script:
+    - export AGENT_VERSION="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+    - export AGENT_SHA256="$(sha256sum ./dist/agent.exe | awk '{print $1}')"
     - echo "Uploading binary to MongoDB GridFS..."
-    - python xdr-soar-infra/scripts/upload_to_gridfs.py ./dist/agent.exe
+    - python xdr-soar-infra/scripts/upload_to_gridfs.py ./dist/agent.exe --version "${AGENT_VERSION}" --sha256 "${AGENT_SHA256}"
 
 notify_mqtt:
   stage: notify_update

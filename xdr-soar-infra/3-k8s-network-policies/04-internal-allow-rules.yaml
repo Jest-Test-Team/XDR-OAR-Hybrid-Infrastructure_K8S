@@ -52,6 +52,9 @@ spec:
     - podSelector:
         matchLabels:
           app: ml-retraining
+    - podSelector:
+        matchLabels:
+          app: firmware-api
     ports:
     - protocol: TCP
       port: 27017
