@@ -12,5 +12,6 @@
 - `8-scripts/`: deploy and validation entrypoints
 - `9-observability/`: Prometheus, Loki, Promtail, and Grafana
 - `apps/`: Docker build contexts for internal application images
+- `IMAGE-PINNING.md`: verified image pin references and policy
 
 主要防禦目標：防止 VM Escape（Hypervisor 逃逸）與 VM Hopping（橫向移動）。

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: pg-meta
-        image: supabase/postgres-meta:latest
+        image: ghcr.io/supabase/postgres-meta:v0.93.1@sha256:3b92a6c4e58ce841c79f65201ae3487af84e774e34ecac989684f775eb78f879
         ports:
         - containerPort: 8080
         env:

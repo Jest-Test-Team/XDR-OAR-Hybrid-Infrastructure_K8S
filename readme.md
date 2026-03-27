@@ -116,13 +116,14 @@ bash deploy-all.sh
 4.  **NetPol 收斂**：移除全域寬鬆 egress 規則，改為 workload-specific egress/ingress，並覆蓋 public web routes 與 observability。
 5.  **可觀測性落地**：`9-observability/` 新增 Prometheus, Loki, Promtail, Grafana。
 6.  **自研鏡像來源補齊**：`xdr-soar-infra/apps/` 提供 detection-engine, ml-training, yara-scanner, admin-frontend, soar-dashboard 的 build context 與 Dockerfile。
-7.  **Windows 更新流程改善**：Updater 已加入 payload 驗證、SHA-256 比對、備份、實際 binary replacement，以及持久 MQTT over TLS 訂閱回圈。
+7.  **Firmware API 落地**：`xdr-soar-infra/apps/firmware-api/` 與對應 K8s manifests 現在提供 `/v1/firmware/<version>` 下載端點，直接從 MongoDB GridFS 讀取 agent binary。
+8.  **Windows 更新流程改善**：Updater 已加入 payload 驗證、SHA-256 比對、備份、實際 binary replacement，以及持久 MQTT over TLS 訂閱回圈。
+9.  **映像版本治理**：Supabase 平台映像已改為明確版本與 digest，`validate-config.sh` 會拒絕新的 `:latest` 映像引用。
 
 仍然尚未在 repo 中實作的部分：
 
-1.  實際的 firmware download API 仍未在 repo 中實作
-2.  部分第三方映像版本仍需依你的實際部署策略再做 pinning 與驗證
-3.  Windows Agent MQTT 認證憑證與 broker 帳密仍需以實際 secrets 值替換
+1.  Windows Agent MQTT 認證憑證與 broker 帳密仍需以實際 secrets 值替換
+2.  若要達到全面供應鏈鎖定，仍可再把 Prometheus、Grafana、Loki、Redis 等既有 tag-pinned 映像升級成 digest-pinned
 
 -----
 

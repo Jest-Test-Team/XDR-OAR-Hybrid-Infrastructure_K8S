@@ -17,13 +17,14 @@ Completed from this report:
 - added frontend ingress, observability manifests, fuller Supabase manifests, CI/runtime helper stubs, and a local validation script
 - added buildable internal application source trees and Dockerfiles for the previously placeholder images
 - replaced the Windows updater stub with a persistent MQTT-over-TLS listener loop
+- added a firmware download API service backed by MongoDB GridFS
+- pinned the remaining `latest` Supabase platform images to verified GHCR versions/digests and added validation that rejects new `:latest` manifest references
 - aligned `readme.md` and `xdr-soar-infra/README.md` with the current ownership model
 
 Still intentionally remaining:
 
-- the firmware download API path used by the Windows updater is still not implemented in this repo
-- some third-party image tags still need production-grade pinning and verification
 - Terraform validation still depends on having `terraform` installed locally
+- not every third-party image in the full stack is digest-pinned yet; only the previously floating `latest` platform images were upgraded in this pass
 
 Treat the detailed findings below as the original inspection baseline that drove the implementation work, not as a fully current post-fix audit.
 

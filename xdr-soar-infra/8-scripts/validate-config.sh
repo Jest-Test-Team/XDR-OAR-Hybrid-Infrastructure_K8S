@@ -49,4 +49,11 @@ else
   echo "[$(date)] Skipping manifest syntax checks because ruby is not installed."
 fi
 
+echo "[$(date)] Checking for unpinned :latest container images..."
+if rg -n 'image: .*:latest' "$ROOT_DIR" -g '*.yaml' -g '*.yml' >/dev/null; then
+  echo "Found forbidden :latest image references in Kubernetes manifests." >&2
+  rg -n 'image: .*:latest' "$ROOT_DIR" -g '*.yaml' -g '*.yml' >&2
+  exit 1
+fi
+
 echo "[$(date)] Validation completed."

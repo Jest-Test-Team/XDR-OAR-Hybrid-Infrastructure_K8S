@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: gotrue
-        image: supabase/gotrue:latest
+        image: ghcr.io/supabase/gotrue:v2.183.0@sha256:9e067aef92d24f02ccd4415293cf6cbba23fb1172fc3c2209249ebbbcf3250d0
         ports:
         - containerPort: 9999
         env:
