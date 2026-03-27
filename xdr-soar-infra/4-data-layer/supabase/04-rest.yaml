@@ -15,12 +15,15 @@ spec:
     spec:
       containers:
       - name: postgrest
-        image: postgrest/postgrest:v12.0.2
+        image: postgrest/postgrest:v12.0.2@sha256:79369c0cdf9d7112ed4e327bc1b80156be11575dd66fbda245077a2d13b803bc
         ports:
         - containerPort: 3000
         env:
         - name: PGRST_DB_URI
-          value: postgres://postgres:change-me@supabase-db:5432/postgres
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: supabase-db-url
         - name: PGRST_DB_SCHEMA
           value: public
         - name: PGRST_DB_ANON_ROLE

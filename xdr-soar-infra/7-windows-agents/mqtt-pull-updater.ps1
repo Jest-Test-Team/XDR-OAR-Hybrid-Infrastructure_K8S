@@ -2,21 +2,64 @@
 # This implementation keeps a persistent MQTT-over-TLS connection to the broker
 # and triggers the pull-based update workflow when a message arrives.
 
+$DefaultConfigPath = Join-Path $env:ProgramData "XDR\config\updater-config.json"
+$ConfigPath = [Environment]::GetEnvironmentVariable("XDR_UPDATER_CONFIG_PATH")
+if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+    $ConfigPath = $DefaultConfigPath
+}
+
+$FileConfig = $null
+if (Test-Path $ConfigPath) {
+    $FileConfig = Get-Content -Raw -Path $ConfigPath | ConvertFrom-Json
+}
+
+function Get-ConfigValue {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentVariable,
+        [object]$Default = $null,
+        [switch]$Required
+    )
+
+    $envValue = [Environment]::GetEnvironmentVariable($EnvironmentVariable)
+    if ([string]::IsNullOrWhiteSpace($envValue)) {
+        $envValue = [Environment]::GetEnvironmentVariable($EnvironmentVariable, [System.EnvironmentVariableTarget]::Machine)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($envValue)) {
+        return $envValue
+    }
+
+    if ($null -ne $FileConfig -and $FileConfig.PSObject.Properties.Name -contains $Name) {
+        $fileValue = $FileConfig.$Name
+        if ($null -ne $fileValue -and -not [string]::IsNullOrWhiteSpace([string]$fileValue)) {
+            return [string]$fileValue
+        }
+    }
+
+    if ($Required) {
+        throw "Missing required updater setting '$Name'. Provide it in $ConfigPath or via environment variable $EnvironmentVariable."
+    }
+
+    return $Default
+}
+
 $Config = @{
-    MqttBroker                  = "mqtt.xdr-soar.local"
-    MqttPort                    = 8883
-    MqttTopic                   = "/agent/update"
-    MqttClientId                = "watchdog-agent-" + $env:COMPUTERNAME
-    MqttKeepAliveSeconds        = 30
-    MqttUsername                = ""
-    MqttPassword                = ""
-    ServerCertificateThumbprint = ""
-    UpdateApiUrl                = "https://api.xdr-soar.local/v1/firmware"
-    AgentServiceName            = "WatchdogAgent"
-    AgentBinaryPath             = "C:\Program Files\XDR\agent.exe"
-    TempDir                     = "C:\Windows\Temp\XDR-Update"
-    BackupDir                   = "C:\ProgramData\XDR\Backups"
-    ReconnectDelaySeconds       = 5
+    MqttBroker                  = Get-ConfigValue -Name "MqttBroker" -EnvironmentVariable "XDR_MQTT_BROKER" -Required
+    MqttPort                    = [int](Get-ConfigValue -Name "MqttPort" -EnvironmentVariable "XDR_MQTT_PORT" -Default "8883")
+    MqttTopic                   = Get-ConfigValue -Name "MqttTopic" -EnvironmentVariable "XDR_MQTT_TOPIC" -Default "/agent/update"
+    MqttClientId                = Get-ConfigValue -Name "MqttClientId" -EnvironmentVariable "XDR_MQTT_CLIENT_ID" -Default ("watchdog-agent-" + $env:COMPUTERNAME)
+    MqttKeepAliveSeconds        = [int](Get-ConfigValue -Name "MqttKeepAliveSeconds" -EnvironmentVariable "XDR_MQTT_KEEPALIVE_SECONDS" -Default "30")
+    MqttUsername                = Get-ConfigValue -Name "MqttUsername" -EnvironmentVariable "XDR_MQTT_USERNAME" -Required
+    MqttPassword                = Get-ConfigValue -Name "MqttPassword" -EnvironmentVariable "XDR_MQTT_PASSWORD" -Required
+    ServerCertificateThumbprint = (Get-ConfigValue -Name "ServerCertificateThumbprint" -EnvironmentVariable "XDR_MQTT_SERVER_CERT_THUMBPRINT" -Required).ToUpperInvariant()
+    UpdateApiUrl                = Get-ConfigValue -Name "UpdateApiUrl" -EnvironmentVariable "XDR_UPDATE_API_URL" -Required
+    AgentServiceName            = Get-ConfigValue -Name "AgentServiceName" -EnvironmentVariable "XDR_AGENT_SERVICE_NAME" -Default "WatchdogAgent"
+    AgentBinaryPath             = Get-ConfigValue -Name "AgentBinaryPath" -EnvironmentVariable "XDR_AGENT_BINARY_PATH" -Default "C:\Program Files\XDR\agent.exe"
+    TempDir                     = Get-ConfigValue -Name "TempDir" -EnvironmentVariable "XDR_AGENT_TEMP_DIR" -Default "C:\Windows\Temp\XDR-Update"
+    BackupDir                   = Get-ConfigValue -Name "BackupDir" -EnvironmentVariable "XDR_AGENT_BACKUP_DIR" -Default "C:\ProgramData\XDR\Backups"
+    ReconnectDelaySeconds       = [int](Get-ConfigValue -Name "ReconnectDelaySeconds" -EnvironmentVariable "XDR_MQTT_RECONNECT_DELAY_SECONDS" -Default "5")
 }
 
 function Ensure-Directory {

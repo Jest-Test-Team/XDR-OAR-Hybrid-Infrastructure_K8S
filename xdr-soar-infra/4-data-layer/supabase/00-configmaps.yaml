@@ -4,10 +4,10 @@ metadata:
   name: supabase-platform-config
   namespace: xdr-soar
 data:
-  API_EXTERNAL_URL: http://supabase:8000
-  GOTRUE_SITE_URL: http://dashboard.xdr-soar.local
-  GOTRUE_URI_ALLOW_LIST: http://dashboard.xdr-soar.local,http://admin.xdr-soar.local
-  DASHBOARD_PUBLIC_URL: http://studio.xdr-soar.local
+  API_EXTERNAL_URL: "${XDR_SOAR_API_EXTERNAL_URL}"
+  GOTRUE_SITE_URL: "${XDR_SOAR_GOTRUE_SITE_URL}"
+  GOTRUE_URI_ALLOW_LIST: "${XDR_SOAR_GOTRUE_URI_ALLOW_LIST}"
+  DASHBOARD_PUBLIC_URL: "${XDR_SOAR_DASHBOARD_PUBLIC_URL}"
   POSTGRES_HOST: supabase-db
   POSTGRES_PORT: "5432"
 ---

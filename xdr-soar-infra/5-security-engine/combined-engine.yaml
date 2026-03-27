@@ -65,7 +65,7 @@ spec:
     spec:
       containers:
       - name: triton
-        image: nvcr.io/nvidia/tritonserver:24.01-py3
+        image: nvcr.io/nvidia/tritonserver:24.01-py3@sha256:3380720761045fc16ba3bcb96cfa54034531fc302df54ecac6b2a4deeab07bbd
         args: ["tritonserver", "--model-repository=/models"]
         volumeMounts:
         - name: model-repository

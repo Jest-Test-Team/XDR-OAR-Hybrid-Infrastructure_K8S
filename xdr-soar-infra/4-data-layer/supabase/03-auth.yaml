@@ -41,7 +41,10 @@ spec:
         - name: GOTRUE_DB_DRIVER
           value: postgres
         - name: GOTRUE_DB_DATABASE_URL
-          value: postgres://postgres:change-me@supabase-db:5432/postgres?sslmode=disable
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: supabase-db-url-sslmode-disable
         - name: GOTRUE_JWT_SECRET
           valueFrom:
             secretKeyRef:

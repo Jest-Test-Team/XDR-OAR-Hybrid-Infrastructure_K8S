@@ -3,10 +3,21 @@ kind: Ingress
 metadata:
   name: xdr-soar-ui
   namespace: xdr-soar
+  annotations:
+    cert-manager.io/cluster-issuer: ${XDR_SOAR_CERT_MANAGER_CLUSTER_ISSUER}
 spec:
-  ingressClassName: nginx
+  ingressClassName: ${XDR_SOAR_INGRESS_CLASS}
+  tls:
+  - secretName: ${XDR_SOAR_TLS_SECRET_NAME}
+    hosts:
+    - ${XDR_SOAR_ADMIN_HOST}
+    - ${XDR_SOAR_DASHBOARD_HOST}
+    - ${XDR_SOAR_GRAFANA_HOST}
+    - ${XDR_SOAR_STUDIO_HOST}
+    - ${XDR_SOAR_SUPABASE_HOST}
+    - ${XDR_SOAR_API_HOST}
   rules:
-  - host: admin.xdr-soar.local
+  - host: ${XDR_SOAR_ADMIN_HOST}
     http:
       paths:
       - path: /
@@ -16,7 +27,7 @@ spec:
             name: admin-panel
             port:
               number: 80
-  - host: dashboard.xdr-soar.local
+  - host: ${XDR_SOAR_DASHBOARD_HOST}
     http:
       paths:
       - path: /
@@ -26,7 +37,7 @@ spec:
             name: soar-dashboard
             port:
               number: 80
-  - host: grafana.xdr-soar.local
+  - host: ${XDR_SOAR_GRAFANA_HOST}
     http:
       paths:
       - path: /
@@ -36,7 +47,7 @@ spec:
             name: grafana
             port:
               number: 3000
-  - host: studio.xdr-soar.local
+  - host: ${XDR_SOAR_STUDIO_HOST}
     http:
       paths:
       - path: /
@@ -46,7 +57,7 @@ spec:
             name: supabase-studio
             port:
               number: 3000
-  - host: supabase.xdr-soar.local
+  - host: ${XDR_SOAR_SUPABASE_HOST}
     http:
       paths:
       - path: /
@@ -56,7 +67,7 @@ spec:
             name: supabase
             port:
               number: 8000
-  - host: api.xdr-soar.local
+  - host: ${XDR_SOAR_API_HOST}
     http:
       paths:
       - path: /

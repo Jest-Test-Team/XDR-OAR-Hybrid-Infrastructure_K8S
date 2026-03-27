@@ -1,3 +1,6 @@
 note.txt
 __pycache__/
 *.pyc
+xdr-soar-infra/.generated/
+xdr-soar-infra/config/platform.env
+xdr-soar-infra/config/updater-config.json

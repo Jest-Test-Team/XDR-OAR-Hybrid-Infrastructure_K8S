@@ -4,6 +4,14 @@ stages:
   - push
   - notify_update
 
+validate_terraform:
+  stage: validate
+  image: hashicorp/terraform:1.8.5@sha256:c2de8d7f1919b8e534c4e7cb92c2b327baafd87010d5a3bba036da05caa12db0
+  script:
+    - cd xdr-soar-infra/1-vmware-esxi
+    - terraform init -backend=false -input=false
+    - terraform validate
+
 validate_infra:
   stage: validate
   script:
@@ -36,5 +44,14 @@ notify_mqtt:
   script:
     - export AGENT_VERSION="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
     - export AGENT_SHA256="$(sha256sum ./dist/agent.exe | awk '{print $1}')"
-    - echo "Publishing update command to MQTT topic /agent/update..."
-    - mosquitto_pub -h mqtt.xdr-soar.local -t "/agent/update" -m "{\"action\":\"update\",\"version\":\"${AGENT_VERSION}\",\"sha256\":\"${AGENT_SHA256}\"}"
+    - : "${MQTT_BROKER_HOST:?Set MQTT_BROKER_HOST in CI variables.}"
+    - : "${MQTT_PORT:=8883}"
+    - : "${MQTT_TOPIC:=/agent/update}"
+    - |
+      if [ -n "${MQTT_USERNAME:-}" ] && [ -n "${MQTT_PASSWORD:-}" ]; then
+        mosquitto_pub -h "$MQTT_BROKER_HOST" -p "$MQTT_PORT" -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
+          -t "$MQTT_TOPIC" -m "{\"action\":\"update\",\"version\":\"${AGENT_VERSION}\",\"sha256\":\"${AGENT_SHA256}\"}"
+      else
+        mosquitto_pub -h "$MQTT_BROKER_HOST" -p "$MQTT_PORT" \
+          -t "$MQTT_TOPIC" -m "{\"action\":\"update\",\"version\":\"${AGENT_VERSION}\",\"sha256\":\"${AGENT_SHA256}\"}"
+      fi

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: kong
-        image: kong:2.8.1
+        image: kong:2.8.1@sha256:1b53405d8680a09d6f44494b7990bf7da2ea43f84a258c59717d4539abf09f6d
         ports:
         - containerPort: 8000
         env:

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: postgres
-        image: supabase/postgres:15.1.1.78
+        image: supabase/postgres:15.1.1.78@sha256:881ac26a02870c6784d9fbec67a6a9c5026905216bbd7dfbfa289ecc48073387
         ports:
         - containerPort: 5432
         env:

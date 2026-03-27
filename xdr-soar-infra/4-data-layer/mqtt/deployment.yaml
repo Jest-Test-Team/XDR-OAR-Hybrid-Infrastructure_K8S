@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: emqx
-        image: emqx/emqx:5.5.0
+        image: emqx/emqx:5.5.0@sha256:d5703ac4b6cdba024657428661a6334fa4807705286036634ab8ccb73f3e1aef
         ports:
         - containerPort: 1883
         - containerPort: 8883

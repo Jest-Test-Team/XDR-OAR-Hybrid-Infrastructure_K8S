@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: prometheus
-        image: prom/prometheus:v2.45.0
+        image: prom/prometheus:v2.45.0@sha256:9309deb7c981e8a94584d9ed689fd62f7ac4549d816fd3881550311cf056a237
         args:
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/prometheus
@@ -47,7 +47,7 @@ spec:
     spec:
       containers:
       - name: loki
-        image: grafana/loki:2.9.6
+        image: grafana/loki:2.9.6@sha256:6ca6e2cd3b6f45e0eb298da2920610fde63ecd8ab6c595d9c941c8559d1d9407
         args:
         - -config.file=/etc/loki/config.yaml
         ports:
@@ -88,7 +88,7 @@ spec:
     spec:
       containers:
       - name: grafana
-        image: grafana/grafana:10.4.2
+        image: grafana/grafana:10.4.2@sha256:7d5faae481a4c6f436c99e98af11534f7fd5e8d3e35213552dd1dd02bc393d2e
         ports:
         - containerPort: 3000
         env:
@@ -126,7 +126,7 @@ spec:
     spec:
       containers:
       - name: promtail
-        image: grafana/promtail:2.9.6
+        image: grafana/promtail:2.9.6@sha256:c0e57ee03512475e982893622544d76da4e3c3671a72425c670ccfc0024a4187
         args:
         - -config.file=/etc/promtail/config.yml
         volumeMounts:

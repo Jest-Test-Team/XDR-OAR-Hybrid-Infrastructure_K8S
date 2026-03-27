@@ -100,7 +100,7 @@ bash deploy-all.sh
 
 -----
 
-## 6\. 目前實作狀態 (Implemented Today - 2026-03-26)
+## 6\. 目前實作狀態 (Implemented Today - 2026-03-27)
 
 目前 repo 的 ownership model 為：
 
@@ -117,13 +117,18 @@ bash deploy-all.sh
 5.  **可觀測性落地**：`9-observability/` 新增 Prometheus, Loki, Promtail, Grafana。
 6.  **自研鏡像來源補齊**：`xdr-soar-infra/apps/` 提供 detection-engine, ml-training, yara-scanner, admin-frontend, soar-dashboard 的 build context 與 Dockerfile。
 7.  **Firmware API 落地**：`xdr-soar-infra/apps/firmware-api/` 與對應 K8s manifests 現在提供 `/v1/firmware/<version>` 下載端點，直接從 MongoDB GridFS 讀取 agent binary。
-8.  **Windows 更新流程改善**：Updater 已加入 payload 驗證、SHA-256 比對、備份、實際 binary replacement，以及持久 MQTT over TLS 訂閱回圈。
-9.  **映像版本治理**：Supabase 平台映像已改為明確版本與 digest，`validate-config.sh` 會拒絕新的 `:latest` 映像引用。
+8.  **Windows 更新流程改善**：Updater 已改為讀取外部 JSON / 環境變數設定，強制要求真實 MQTT 帳密、Broker 憑證 thumbprint 與 firmware API URL。
+9.  **映像版本治理**：所有第三方 K8s 映像都已改為明確版本加 digest，`validate-config.sh` 會拒絕新的 `:latest` 或 tag-only 第三方映像。
+10. **部署參數化**：`deploy-all.sh` 會載入 `xdr-soar-infra/config/platform.env` 並自動生成 `.generated/platform-secrets.env`，再渲染 Secrets、Supabase URL 與 Ingress/TLS 設定。
+11. **Ingress/TLS 對齊**：Ingress 已加入 `tls` 與 cert-manager ClusterIssuer wiring，並從 `platform.env` 渲染正式網域而不是 `.local` host。
+12. **Terraform 驗證補齊**：`validate-config.sh` 現在會使用本機 Terraform 或 Dockerized Terraform，GitLab CI 也有獨立 `validate_terraform` job。
 
-仍然尚未在 repo 中實作的部分：
+目前剩下的是部署前置條件，而不是 repo 缺件：
 
-1.  Windows Agent MQTT 認證憑證與 broker 帳密仍需以實際 secrets 值替換
-2.  若要達到全面供應鏈鎖定，仍可再把 Prometheus、Grafana、Loki、Redis 等既有 tag-pinned 映像升級成 digest-pinned
+1.  複製 `xdr-soar-infra/config/platform.env.example` 為 `xdr-soar-infra/config/platform.env`，填入實際 base domain、ACME email、ClusterIssuer 與 MQTT/Firmware API 端點。
+2.  若目標叢集尚未安裝 cert-manager，`deploy-all.sh` 會略過 `ClusterIssuer`；此時需要自行提供 TLS Secret 或先安裝 cert-manager CRDs。
+3.  Windows 端點仍需部署 `updater-config.json` 或對應的環境變數，因為 updater 不再接受內建預設值。
+4.  `.generated/platform-secrets.env` 是 bootstrap secrets；正式環境建議在第一次部署後旋轉，或改接外部 secret manager。
 
 -----
 
