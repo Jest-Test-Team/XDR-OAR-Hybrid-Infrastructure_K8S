@@ -1,0 +1,14 @@
+[
+  {
+    "name": "powershell-download-cradle",
+    "pattern": "IEX\\s*\\(New-Object\\s+Net\\.WebClient\\)"
+  },
+  {
+    "name": "mimikatz-marker",
+    "pattern": "mimikatz"
+  },
+  {
+    "name": "suspicious-rundll32",
+    "pattern": "rundll32\\.exe"
+  }
+]

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SOAR Dashboard</title>
+  <style>
+    :root {
+      --bg: #f3efe4;
+      --ink: #14202d;
+      --accent: #c55a11;
+      --card: rgba(255, 252, 246, 0.92);
+      --border: #d5c9b4;
+      --muted: #546476;
+    }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, rgba(197, 90, 17, 0.2), transparent 30%),
+        linear-gradient(180deg, #fffaf0, var(--bg));
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 56px 20px 80px;
+    }
+    .hero, .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 20px 45px rgba(39, 28, 16, 0.08);
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      margin: 0 0 12px;
+    }
+    .panel-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .status {
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    .muted {
+      color: var(--muted);
+    }
+    strong {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>SOAR Incident Surface</h1>
+      <p class="muted">This frontend is now a real image build context instead of a manifest-only placeholder. Use it as the analyst landing page for alert severity, model health, and escalation paths.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-grid">
+        <div class="status">
+          <strong>Detection Engine</strong>
+          <p class="muted">Consumes telemetry, scores risk, and emits alert records to Supabase REST.</p>
+        </div>
+        <div class="status">
+          <strong>YARA Scanner</strong>
+          <p class="muted">Exposes a scan API and Prometheus metrics for suspicious sample analysis.</p>
+        </div>
+        <div class="status">
+          <strong>Observability</strong>
+          <p class="muted">Grafana, Loki, Prometheus, and Promtail are deployed inside the same namespace.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
