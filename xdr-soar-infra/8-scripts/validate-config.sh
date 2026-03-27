@@ -33,13 +33,14 @@ if command -v terraform >/dev/null 2>&1; then
   terraform -chdir="$TERRAFORM_DIR" init -backend=false -input=false >/dev/null
   terraform -chdir="$TERRAFORM_DIR" validate
 elif command -v docker >/dev/null 2>&1; then
-  docker run --rm --user "$(id -u):$(id -g)" -e TF_DATA_DIR=/tfdata \
+  mkdir -p "$RENDER_DIR/tfdata"
+  docker run --rm -e TF_DATA_DIR=/tfdata \
     -v "$TERRAFORM_DIR:/workspace" -v "$RENDER_DIR/tfdata:/tfdata" -w /workspace \
     hashicorp/terraform:1.8.5@sha256:c2de8d7f1919b8e534c4e7cb92c2b327baafd87010d5a3bba036da05caa12db0 fmt -check
-  docker run --rm --user "$(id -u):$(id -g)" -e TF_DATA_DIR=/tfdata \
+  docker run --rm -e TF_DATA_DIR=/tfdata \
     -v "$TERRAFORM_DIR:/workspace" -v "$RENDER_DIR/tfdata:/tfdata" -w /workspace \
     hashicorp/terraform:1.8.5@sha256:c2de8d7f1919b8e534c4e7cb92c2b327baafd87010d5a3bba036da05caa12db0 init -backend=false -input=false >/dev/null
-  docker run --rm --user "$(id -u):$(id -g)" -e TF_DATA_DIR=/tfdata \
+  docker run --rm -e TF_DATA_DIR=/tfdata \
     -v "$TERRAFORM_DIR:/workspace" -v "$RENDER_DIR/tfdata:/tfdata" -w /workspace \
     hashicorp/terraform:1.8.5@sha256:c2de8d7f1919b8e534c4e7cb92c2b327baafd87010d5a3bba036da05caa12db0 validate
 else
