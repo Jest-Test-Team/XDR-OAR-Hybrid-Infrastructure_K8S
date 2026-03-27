@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-auth
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supabase-auth
+  template:
+    metadata:
+      labels:
+        app: supabase-auth
+    spec:
+      containers:
+      - name: gotrue
+        image: supabase/gotrue:latest
+        ports:
+        - containerPort: 9999
+        env:
+        - name: GOTRUE_API_HOST
+          value: 0.0.0.0
+        - name: GOTRUE_API_PORT
+          value: "9999"
+        - name: API_EXTERNAL_URL
+          valueFrom:
+            configMapKeyRef:
+              name: supabase-platform-config
+              key: API_EXTERNAL_URL
+        - name: GOTRUE_SITE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: supabase-platform-config
+              key: GOTRUE_SITE_URL
+        - name: GOTRUE_URI_ALLOW_LIST
+          valueFrom:
+            configMapKeyRef:
+              name: supabase-platform-config
+              key: GOTRUE_URI_ALLOW_LIST
+        - name: GOTRUE_DB_DRIVER
+          value: postgres
+        - name: GOTRUE_DB_DATABASE_URL
+          value: postgres://postgres:change-me@supabase-db:5432/postgres?sslmode=disable
+        - name: GOTRUE_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: supabase-jwt-secret
+        - name: GOTRUE_JWT_AUD
+          value: authenticated
+        - name: GOTRUE_JWT_EXP
+          value: "3600"
+        - name: GOTRUE_DISABLE_SIGNUP
+          value: "false"

@@ -27,16 +27,21 @@ kubectl apply -f "$SCRIPT_DIR/../4-data-layer/influxdb/statefulset.yaml"
 kubectl apply -f "$SCRIPT_DIR/../4-data-layer/kafka/statefulset.yaml"
 kubectl apply -f "$SCRIPT_DIR/../4-data-layer/mqtt/deployment.yaml"
 kubectl apply -f "$SCRIPT_DIR/../4-data-layer/redis/deployment.yaml"
-kubectl apply -f "$SCRIPT_DIR/../4-data-layer/supabase/deployment.yaml"
+kubectl apply -f "$SCRIPT_DIR/../4-data-layer/supabase/"
 
 # 4. Security Engine (Inference servers, Rules, Scanners)
 echo "[$(date)] Applying Security Engine..."
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/services.yaml"
+kubectl apply -f "$SCRIPT_DIR/../5-security-engine/model-repository-pvc.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/combined-engine.yaml"
 
 # 5. Frontend UI
 echo "[$(date)] Applying Frontend UI..."
 kubectl apply -f "$SCRIPT_DIR/../6-frontend-ui/combined-frontend.yaml"
 kubectl apply -f "$SCRIPT_DIR/../6-frontend-ui/ingress.yaml"
+
+# 6. Observability
+echo "[$(date)] Applying Observability Stack..."
+kubectl apply -f "$SCRIPT_DIR/../9-observability/"
 
 echo "[$(date)] Deployment finished. Run 'kubectl get pods -n xdr-soar' to monitor status."

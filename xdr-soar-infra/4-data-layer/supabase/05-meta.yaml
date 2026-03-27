@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-meta
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supabase-meta
+  template:
+    metadata:
+      labels:
+        app: supabase-meta
+    spec:
+      containers:
+      - name: pg-meta
+        image: supabase/postgres-meta:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PG_META_PORT
+          value: "8080"
+        - name: PG_META_DB_HOST
+          value: supabase-db
+        - name: PG_META_DB_PORT
+          value: "5432"
+        - name: PG_META_DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: supabase-db-name
+        - name: PG_META_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: supabase-db-user
+        - name: PG_META_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: supabase-db-password

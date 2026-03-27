@@ -29,6 +29,7 @@ if command -v ruby >/dev/null 2>&1; then
       "$ROOT_DIR/4-data-layer" \
       "$ROOT_DIR/5-security-engine" \
       "$ROOT_DIR/6-frontend-ui" \
+      "$ROOT_DIR/9-observability" \
       -type f \( -name '*.yaml' -o -name '*.yml' \) ! -name 'cilium-values.yaml' | sort
   )
 else

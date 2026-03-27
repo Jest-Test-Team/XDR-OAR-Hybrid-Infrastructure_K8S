@@ -27,6 +27,11 @@ spec:
           value: "5432"
         - name: SUPABASE_REST_URL
           value: "http://supabase/rest/v1/alerts"
+        - name: SUPABASE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: supabase-service-role-key
         ports:
         - containerPort: 8080
         resources:

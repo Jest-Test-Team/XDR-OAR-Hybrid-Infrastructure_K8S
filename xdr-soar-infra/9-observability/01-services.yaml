@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 9090
+    targetPort: 9090
+  selector:
+    app: prometheus
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 3100
+    targetPort: 3100
+  selector:
+    app: loki
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: grafana

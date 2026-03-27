@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: supabase-db
+  namespace: xdr-soar
+spec:
+  clusterIP: None
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
+  selector:
+    app: supabase-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: supabase-auth
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 9999
+    targetPort: 9999
+  selector:
+    app: supabase-auth
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: supabase-rest
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: supabase-rest
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: supabase-meta
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: supabase-meta
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: supabase-studio
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: supabase-studio
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: supabase
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+  selector:
+    app: supabase-gateway

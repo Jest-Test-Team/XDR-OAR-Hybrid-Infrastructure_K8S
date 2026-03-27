@@ -26,3 +26,33 @@ spec:
             name: soar-dashboard
             port:
               number: 80
+  - host: grafana.xdr-soar.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000
+  - host: studio.xdr-soar.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: supabase-studio
+            port:
+              number: 3000
+  - host: supabase.xdr-soar.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: supabase
+            port:
+              number: 8000

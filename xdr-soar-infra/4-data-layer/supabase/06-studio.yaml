@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-studio
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supabase-studio
+  template:
+    metadata:
+      labels:
+        app: supabase-studio
+    spec:
+      containers:
+      - name: studio
+        image: supabase/studio:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: STUDIO_PG_META_URL
+          value: http://supabase-meta:8080
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: supabase-db-password
+        - name: DEFAULT_ORGANIZATION_NAME
+          value: XDR SOAR
+        - name: DEFAULT_PROJECT_NAME
+          value: aegis-watchdog
+        - name: SUPABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: supabase-platform-config
+              key: API_EXTERNAL_URL
+        - name: SUPABASE_PUBLIC_URL
+          valueFrom:
+            configMapKeyRef:
+              name: supabase-platform-config
+              key: DASHBOARD_PUBLIC_URL

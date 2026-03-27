@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: supabase-platform-config
+  namespace: xdr-soar
+data:
+  API_EXTERNAL_URL: http://supabase:8000
+  GOTRUE_SITE_URL: http://dashboard.xdr-soar.local
+  GOTRUE_URI_ALLOW_LIST: http://dashboard.xdr-soar.local,http://admin.xdr-soar.local
+  DASHBOARD_PUBLIC_URL: http://studio.xdr-soar.local
+  POSTGRES_HOST: supabase-db
+  POSTGRES_PORT: "5432"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: supabase-db-init
+  namespace: xdr-soar
+data:
+  01-init.sql: |
+    create role anon nologin noinherit;
+    create role authenticated nologin noinherit;
+    create role service_role nologin noinherit bypassrls;
+
+    create table if not exists public.alerts (
+      id bigserial primary key,
+      hostname text not null,
+      risk_score integer not null,
+      indicators jsonb not null default '[]'::jsonb,
+      generated_at bigint not null
+    );
+
+    grant usage on schema public to anon, authenticated, service_role;
+    grant select on public.alerts to authenticated, anon;
+    grant insert, select, update on public.alerts to service_role;
+    grant usage, select on all sequences in schema public to service_role;
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: supabase-kong-config
+  namespace: xdr-soar
+data:
+  kong.yml: |
+    _format_version: "2.1"
+    services:
+      - name: rest
+        url: http://supabase-rest:3000/
+        routes:
+          - name: rest-route
+            paths:
+              - /rest/v1
+            strip_path: true
+      - name: auth
+        url: http://supabase-auth:9999/
+        routes:
+          - name: auth-route
+            paths:
+              - /auth/v1
+            strip_path: true

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-gateway
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supabase-gateway
+  template:
+    metadata:
+      labels:
+        app: supabase-gateway
+    spec:
+      containers:
+      - name: kong
+        image: kong:2.8.1
+        ports:
+        - containerPort: 8000
+        env:
+        - name: KONG_DATABASE
+          value: "off"
+        - name: KONG_DECLARATIVE_CONFIG
+          value: /etc/kong/kong.yml
+        - name: KONG_PROXY_ACCESS_LOG
+          value: /dev/stdout
+        - name: KONG_ADMIN_ACCESS_LOG
+          value: /dev/stdout
+        - name: KONG_PROXY_ERROR_LOG
+          value: /dev/stderr
+        - name: KONG_ADMIN_ERROR_LOG
+          value: /dev/stderr
+        - name: KONG_ADMIN_LISTEN
+          value: "off"
+        volumeMounts:
+        - name: kong-config
+          mountPath: /etc/kong
+      volumes:
+      - name: kong-config
+        configMap:
+          name: supabase-kong-config
