@@ -15,7 +15,24 @@ spec:
     spec:
       containers:
       - name: emqx
-        image: emqx/emqx:5.0
+        image: emqx/emqx:5.5.0
         ports:
         - containerPort: 1883
-        - containerPort: 8883 # TLS
+        - containerPort: 8883
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        readinessProbe:
+          tcpSocket:
+            port: 1883
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 1883
+          initialDelaySeconds: 15
+          periodSeconds: 20

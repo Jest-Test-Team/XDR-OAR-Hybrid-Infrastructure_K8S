@@ -1,0 +1,169 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: detection-engine
+  namespace: xdr-soar
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: detection-engine
+  template:
+    metadata:
+      labels:
+        app: detection-engine
+    spec:
+      containers:
+      - name: rules-engine
+        image: custom-engine:v1.0.0
+        env:
+        - name: INFLUXDB_URL
+          value: "http://influxdb:8086"
+        - name: KAFKA_BROKERS
+          value: "kafka:9092"
+        - name: SUPABASE_DB_HOST
+          value: "supabase"
+        - name: SUPABASE_DB_PORT
+          value: "5432"
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-triton-server
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: triton-server
+  template:
+    metadata:
+      labels:
+        app: triton-server
+    spec:
+      containers:
+      - name: triton
+        image: nvcr.io/nvidia/tritonserver:24.01-py3
+        args: ["tritonserver", "--model-repository=/models"]
+        volumeMounts:
+        - name: model-repository
+          mountPath: /models
+        ports:
+        - containerPort: 8000
+        - containerPort: 8001
+        - containerPort: 8002
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        readinessProbe:
+          httpGet:
+            path: /v2/health/ready
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+      volumes:
+      - name: model-repository
+        emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ml-retraining
+  namespace: xdr-soar
+spec:
+  schedule: "0 2 * * *" # 每天凌晨 2 點執行訓練
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: ml-retraining
+        spec:
+          containers:
+          - name: training-job
+            image: ml-training:v1.0.0
+            env:
+            - name: MONGODB_HOST
+              value: "mongodb"
+            - name: SUPABASE_DB_HOST
+              value: "supabase"
+            - name: SUPABASE_DB_PORT
+              value: "5432"
+            resources:
+              requests:
+                cpu: 1000m
+                memory: 2Gi
+              limits:
+                cpu: 4000m
+                memory: 8Gi
+          restartPolicy: OnFailure
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yara-scanner
+  namespace: xdr-soar
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: yara-scanner
+  template:
+    metadata:
+      labels:
+        app: yara-scanner
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: yara
+        image: custom-yara:v1.0.0
+        ports:
+        - containerPort: 9000
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: yara-tmp
+          mountPath: /tmp
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: yara-tmp
+        emptyDir: {}

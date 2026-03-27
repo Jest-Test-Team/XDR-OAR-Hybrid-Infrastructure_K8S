@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: xdr-soar-ui
+  namespace: xdr-soar
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: admin.xdr-soar.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-panel
+            port:
+              number: 80
+  - host: dashboard.xdr-soar.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: soar-dashboard
+            port:
+              number: 80

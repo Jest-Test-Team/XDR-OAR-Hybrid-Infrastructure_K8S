@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: detection-engine
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: detection-engine
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton-server
+  namespace: xdr-soar
+spec:
+  ports:
+  - name: grpc
+    port: 8001
+    targetPort: 8001
+  - name: http
+    port: 8000
+    targetPort: 8000
+  selector:
+    app: triton-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yara-scanner
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 9000
+    targetPort: 9000
+  selector:
+    app: yara-scanner

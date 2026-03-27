@@ -1,0 +1,11 @@
+vsphere_user                    = "administrator@vsphere.local"
+vsphere_password                = "change-me"
+vsphere_server                  = "vcenter.example.local"
+vsphere_distributed_switch_uuid = "50 2a aa bb cc dd ee ff-11 22 33 44 55 66 77 88"
+vsphere_allow_unverified_ssl    = false
+
+k8s_port_group_name     = "VLAN-20-K8s-App"
+k8s_vlan_id             = 20
+windows_port_group_name = "VLAN-100-Windows-Isolated"
+windows_vlan_id         = 100
+port_group_ports        = 32
