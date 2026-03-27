@@ -8,12 +8,28 @@ $Config = @{
     MqttTopic      = "/agent/update"
     UpdateApiUrl   = "https://api.xdr-soar.local/v1/firmware"
     AgentServiceName = "WatchdogAgent"
+    AgentBinaryPath = "C:\Program Files\XDR\agent.exe"
     TempDir        = "C:\Windows\Temp\XDR-Update"
+    BackupDir      = "C:\ProgramData\XDR\Backups"
 }
 
 # Ensure Temp Directory exists
 if (-not (Test-Path $Config.TempDir)) {
     New-Item -ItemType Directory -Force -Path $Config.TempDir
+}
+
+if (-not (Test-Path $Config.BackupDir)) {
+    New-Item -ItemType Directory -Force -Path $Config.BackupDir
+}
+
+function Test-UpdatePayload {
+    param (
+        [Parameter(Mandatory=$true)]
+        [pscustomobject]$UpdateInfo
+    )
+
+    return -not [string]::IsNullOrWhiteSpace($UpdateInfo.version) -and
+           -not [string]::IsNullOrWhiteSpace($UpdateInfo.sha256)
 }
 
 function Invoke-Update {
@@ -24,8 +40,12 @@ function Invoke-Update {
 
     try {
         $UpdateInfo = $PayloadJson | ConvertFrom-Json
+        if (-not (Test-UpdatePayload -UpdateInfo $UpdateInfo)) {
+            throw "Payload is missing required fields: version or sha256"
+        }
+
         $Version = $UpdateInfo.version
-        $ExpectedHash = $UpdateInfo.sha256
+        $ExpectedHash = $UpdateInfo.sha256.ToUpperInvariant()
         $DownloadUrl = "$($Config.UpdateApiUrl)/$Version"
 
         Write-Host "[$(Get-Date)] Starting update to version $Version"
@@ -37,7 +57,7 @@ function Invoke-Update {
         Invoke-WebRequest -Uri $DownloadUrl -OutFile $DestFile -ErrorAction Stop
 
         # Verify Hash
-        $ActualHash = (Get-FileHash $DestFile -Algorithm SHA256).Hash
+        $ActualHash = (Get-FileHash $DestFile -Algorithm SHA256).Hash.ToUpperInvariant()
         if ($ActualHash -ne $ExpectedHash) {
             Write-Error "Hash mismatch! Expected: $ExpectedHash, Got: $ActualHash"
             return
@@ -48,8 +68,12 @@ function Invoke-Update {
         # Stopping service
         Stop-Service -Name $Config.AgentServiceName -ErrorAction SilentlyContinue
 
-        # Replace binary (Surgical update)
-        # Move-Item $DestFile "C:\Program Files\XDR\agent.exe" -Force
+        if (Test-Path $Config.AgentBinaryPath) {
+            $BackupPath = Join-Path $Config.BackupDir "agent_$Version.bak.exe"
+            Copy-Item $Config.AgentBinaryPath $BackupPath -Force
+        }
+
+        Move-Item $DestFile $Config.AgentBinaryPath -Force
 
         # Restart service
         Start-Service -Name $Config.AgentServiceName
@@ -61,6 +85,6 @@ function Invoke-Update {
     }
 }
 
-Write-Host "XDR Agent Updater started. Monitoring $Topic..."
+Write-Host "XDR Agent Updater started. Monitoring $($Config.MqttTopic)..."
 # Note: Real implementation requires a .NET MQTT library like MQTTnet to handle the persistent connection.
 # Example usage: Invoke-Update -PayloadJson '{"version": "1.2.3", "sha256": "A1B2C3D4..."}'

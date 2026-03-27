@@ -34,7 +34,7 @@
 
 1.  **Default Deny All**：所有 Namespace 預設禁止任何進出流量。
 2.  **Micro-segmentation**：僅允許 MQTT Broker 接收來自特定 VLAN 100 (Windows) 的流量。
-3.  **YARA Sandbox 隔離**：YARA 掃描器被限制為「唯讀存取 MongoDB 樣本庫」，並嚴禁任何外部（Egress）網際網路連線。
+3.  **YARA Sandbox 隔離**：YARA 掃描器僅允許連線至 MongoDB 讀取樣本，並將掃描結果回寫到 Kafka；不允許任何外部網際網路連線。
 
 -----
 
@@ -49,7 +49,7 @@
 | | 數據匯流排 | Kafka | 高併發日誌削峰填谷，供偵測引擎消費。 |
 | **偵測引擎** | ML 推論伺服器 | NVIDIA Triton | 並行運行 9 個不同維度的 ML 偵測模型。 |
 | | 特徵掃描 | YARA Instance | 針對可疑二進位檔進行靜態特徵匹配。 |
-| **監控系統** | 可觀測性 | Grafana 三件套 | Prometheus (指標)、Loki (日誌)、Grafana (面板)。 |
+| **監控系統** | 可觀測性 | Grafana 三件套 | 目標架構包含 Prometheus (指標)、Loki (日誌)、Grafana (面板)；目前尚未在 repo 內實作。 |
 
 -----
 
@@ -72,46 +72,55 @@
 
 ```bash
 # 進入 VMware 配置目錄並初始化
-cd 1-vmware-esxi/
+cd xdr-soar-infra/1-vmware-esxi/
+cp terraform.tfvars.example terraform.tfvars
 terraform init && terraform apply
 ```
 
 ### 第二步：K8s 網路安全配置
 
 ```bash
-# 部署 Cilium 並套用零信任策略
-kubectl apply -f 2-kubernetes-cluster/cilium-values.yaml
-kubectl apply -f 3-k8s-network-policies/
+# 使用 envsubst + Helm 方式安裝 Cilium
+cd xdr-soar-infra/2-kubernetes-cluster/
+export K8S_API_SERVER_HOST=10.0.0.10
+export K8S_API_SERVER_PORT=6443
+./install-cilium.sh
+
+# 再套用零信任策略
+kubectl apply -f ../3-k8s-network-policies/
 ```
 
 ### 第三步：啟動核心微服務
 
 ```bash
 # 使用整合腳本啟動資料層與引擎
-cd 8-scripts/
+cd xdr-soar-infra/8-scripts/
 bash deploy-all.sh
 ```
 
 -----
 
-## 6\. 基礎設施改良 (Infrastructure Improvements - 2026-03-26)
+## 6\. 目前實作狀態 (Implemented Today - 2026-03-26)
 
-本專案已根據 `docs/repo-suggestions-todos-report.md` 完成以下核心改良：
+目前 repo 的 ownership model 為：
 
-1.  **冪等部署 (Idempotency)**：新增 `Namespace` 宣告，並重構 `deploy-all.sh` 以支援重複執行。
-2.  **服務發現 (Service Discovery)**：為所有資料庫與引擎組件新增 `Service` 定義，消除對 Pod IP 的依賴。
-3.  **網路策略強化 (NetPol Hardening)**：
-    * 實作預設全阻斷 (Default Deny)。
-    * 新增 DNS 解析白名單。
-    * 建立精確的服務間通訊矩陣。
-4.  **持久化與穩定性 (Persistence & Stability)**：
-    * 為 MongoDB, Kafka, InfluxDB 啟用 `StatefulSet` 與 `volumeClaimTemplates`。
-    * 新增容器資源限制 (CPU/Memory Requests & Limits)。
-    * 導入 `readinessProbe` 與 `livenessProbe` 健康檢查。
-5.  **安全硬化 (Security Hardening)**：
-    * YARA 掃描器強制執行 `readOnlyRootFilesystem` 與能力裁減 (Capability Drop)。
-    * 全面移除 `:latest` 標籤，改採固定版本鏡像。
-    * 改良 Windows PowerShell Updater，導入 JSON Payload 驗證與 SHA-256 Hash 比對。
+1.  **Terraform 僅管理 VMware 網路邊界**：`xdr-soar-infra/1-vmware-esxi/` 現在是單一 Terraform root，包含 version pinning、variables、outputs 與 example tfvars。
+2.  **Kubernetes 採 YAML-first**：Data Layer、Security Engine、Frontend 與 NetworkPolicy 由 `kubectl apply` + shell script 管理。
+3.  **Cilium 以 Helm 安裝**：使用 `xdr-soar-infra/2-kubernetes-cluster/install-cilium.sh` 渲染 `cilium-values.yaml` 後安裝。
+
+本 repo 已完成以下改良：
+
+1.  **冪等部署**：`deploy-all.sh` 改為以腳本所在目錄為基準，並使用 `kubectl apply` 套用 Namespace、Secrets、Services、StatefulSets 與前端 Ingress。
+2.  **狀態服務基礎強化**：MongoDB、Kafka、InfluxDB 已具備 PVC、固定 Service、基本 probes 與初始化環境變數。
+3.  **資料層憑證外提**：內嵌於 manifest 的 DB 密碼已移至 `4-data-layer/00-secrets.yaml`。
+4.  **NetPol 收斂**：移除全域寬鬆 egress 規則，改為 workload-specific egress/ingress。
+5.  **Windows 更新流程改善**：Updater 已加入 payload 驗證、SHA-256 比對、備份與實際 binary replacement。
+
+仍然尚未在 repo 中實作的部分：
+
+1.  Grafana / Loki / Prometheus
+2.  自研引擎與前端的實際 source code / Docker build context
+3.  完整的 Supabase stack
 
 -----
 
@@ -133,5 +142,4 @@ bash deploy-all.sh
 
 -----
 
-> **注意：** 在執行 YARA 掃描器測試前，請務必確認 `3-k8s-network-policies/02-isolate-yara.yaml` 已成功套用，以防止惡意樣本觸發反向連線。
-
+> **注意：** 在執行 YARA 掃描器測試前，請務必確認 `xdr-soar-infra/3-k8s-network-policies/02-isolate-yara.yaml` 已成功套用，以防止惡意樣本觸發非預期連線。

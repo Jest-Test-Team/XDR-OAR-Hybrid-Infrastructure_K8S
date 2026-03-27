@@ -1,23 +1,31 @@
 stages:
+  - validate
   - build
   - push
   - notify_update
+
+validate_infra:
+  stage: validate
+  script:
+    - bash xdr-soar-infra/8-scripts/validate-config.sh
 
 build_agent:
   stage: build
   tags: [isolated-runner]
   script:
     - echo "Building Windows EDR Agent..."
-    - pyinstaller --onefile agent_main.py
+    - pyinstaller --onefile xdr-soar-infra/agent_main.py --name agent --distpath dist
 
 push_to_mongodb:
   stage: push
   script:
     - echo "Uploading binary to MongoDB GridFS..."
-    - python scripts/upload_to_gridfs.py ./dist/agent.exe
+    - python xdr-soar-infra/scripts/upload_to_gridfs.py ./dist/agent.exe
 
 notify_mqtt:
   stage: notify_update
   script:
+    - export AGENT_VERSION="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+    - export AGENT_SHA256="$(sha256sum ./dist/agent.exe | awk '{print $1}')"
     - echo "Publishing update command to MQTT topic /agent/update..."
-    - mosquitto_pub -h mqtt.local -t "/agent/update" -m '{"action":"update", "version":"latest"}'
+    - mosquitto_pub -h mqtt.xdr-soar.local -t "/agent/update" -m "{\"action\":\"update\",\"version\":\"${AGENT_VERSION}\",\"sha256\":\"${AGENT_SHA256}\"}"
