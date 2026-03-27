@@ -60,6 +60,16 @@ else
   echo "[$(date)] Skipping Python checks because python3 is not installed."
 fi
 
+echo "[$(date)] Validating shell script syntax..."
+while IFS= read -r shell_script; do
+  bash -n "$shell_script"
+done < <(
+  find \
+    "$ROOT_DIR/2-kubernetes-cluster" \
+    "$ROOT_DIR/8-scripts" \
+    -type f -name '*.sh' | sort
+)
+
 echo "[$(date)] Validating Kubernetes manifest YAML syntax..."
 if command -v ruby >/dev/null 2>&1; then
   while IFS= read -r source_manifest; do

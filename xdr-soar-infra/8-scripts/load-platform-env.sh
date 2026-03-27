@@ -44,7 +44,7 @@ load_env_file "$SECRETS_ENV"
 : "${XDR_SOAR_ACME_EMAIL:?Set XDR_SOAR_ACME_EMAIL in $PLATFORM_ENV or $PLATFORM_ENV_EXAMPLE.}"
 
 export XDR_SOAR_INGRESS_CLASS="${XDR_SOAR_INGRESS_CLASS:-nginx}"
-export XDR_SOAR_TLS_MODE="${XDR_SOAR_TLS_MODE:-selfsigned}"
+export XDR_SOAR_TLS_MODE="${XDR_SOAR_TLS_MODE:-auto}"
 export XDR_SOAR_ACME_SERVER="${XDR_SOAR_ACME_SERVER:-https://acme-v02.api.letsencrypt.org/directory}"
 export XDR_SOAR_TLS_SECRET_NAME="${XDR_SOAR_TLS_SECRET_NAME:-xdr-soar-platform-tls}"
 export XDR_SOAR_MQTT_TLS_SECRET_NAME="${XDR_SOAR_MQTT_TLS_SECRET_NAME:-xdr-soar-mqtt-tls}"

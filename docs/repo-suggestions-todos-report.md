@@ -7,7 +7,7 @@ Scope: `note.txt`, `xdr-soar-infra/`, `readme.md`, and deployment/validation ass
 
 - `note.txt` is empty, so it does not add extra requirements.
 - `xdr-soar-infra/1-vmware-esxi/` is now one coherent Terraform root with versions, providers, variables, outputs, example tfvars, and automated validation coverage.
-- Kubernetes deployment remains YAML-first, but the repo now bootstraps platform config, renders environment-specific Secrets, Supabase URLs, Ingress hosts, MQTT exposure, and TLS settings at deploy time.
+- Kubernetes deployment remains YAML-first, but the repo now bootstraps platform config, auto-selects TLS mode, renders environment-specific Secrets, Supabase URLs, Ingress hosts, MQTT exposure, and TLS settings at deploy time.
 - Every third-party image referenced by tracked Kubernetes manifests is now pinned to an immutable digest.
 - The Windows updater is no longer tied to embedded `.local` endpoints or blank MQTT credentials; it requires external runtime config.
 
@@ -19,7 +19,7 @@ Scope: `note.txt`, `xdr-soar-infra/`, `readme.md`, and deployment/validation ass
 - added TLS blocks and cert-manager ClusterIssuer wiring for the frontend ingress
 - removed `.local` host assumptions from active manifests and runtime automation
 - updated the Windows updater to load broker credentials, broker certificate thumbprint, and firmware API URL from JSON config or environment variables
-- added generated TLS assets, MQTT broker auth bootstrap, an external MQTT service, and generated updater JSON output so the updater path is deployable end to end from repo automation
+- added generated TLS assets, MQTT broker auth bootstrap, an external MQTT service, automatic TLS-mode selection, and a packaged Windows updater bundle so the updater path is deployable end to end from repo automation
 - made `install-cilium.sh` auto-detect the Kubernetes API server endpoint when explicit values are not supplied
 - pinned the remaining vendor images to digests, including Redis, MongoDB, InfluxDB, Kafka, EMQX, Kong, PostgREST, Prometheus, Grafana, Loki, Promtail, Supabase Postgres, and Triton
 - extended validation so it rejects stale placeholders, `:latest`, and tag-only third-party images
@@ -29,11 +29,10 @@ Scope: `note.txt`, `xdr-soar-infra/`, `readme.md`, and deployment/validation ass
 
 There are no remaining repo-level feature TODOs from the inspected list.
 
-Only deployment-policy choices remain:
+The remaining decisions are optional production hardening only:
 
-- decide whether to keep the bootstrap self-signed TLS flow or switch to `XDR_SOAR_TLS_MODE=cert-manager` with a real issuer
-- distribute `.generated/updater-config.json` to Windows agents or inject the same settings via environment variables
 - rotate or externalize the generated bootstrap secrets before production rollout
+- switch the default bootstrap TLS flow to organization-managed PKI if required by the target environment
 
 ## Verification Notes
 

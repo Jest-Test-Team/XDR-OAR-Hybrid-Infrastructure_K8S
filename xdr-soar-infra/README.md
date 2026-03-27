@@ -21,5 +21,6 @@
 
 - 若 `config/platform.env` 不存在，先自動產生 bootstrap 平台設定
 - 自動生成 `.generated/platform-secrets.env` 作為 bootstrap secrets
-- 自動生成平台 TLS / MQTT TLS 憑證與 `.generated/updater-config.json`
+- 自動選擇 cert-manager 或 self-signed TLS 流程，並生成平台 TLS / MQTT TLS 憑證
+- 自動生成 `.generated/updater-config.json` 與 `.generated/windows-updater-bundle.zip`
 - 渲染 Secrets、Supabase URLs、Ingress/TLS、MQTT 與 ClusterIssuer 模板後再套用

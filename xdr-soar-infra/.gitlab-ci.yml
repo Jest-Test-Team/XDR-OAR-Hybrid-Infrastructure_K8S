@@ -31,6 +31,15 @@ build_agent:
     - echo "Building Windows EDR Agent..."
     - pyinstaller --onefile xdr-soar-infra/agent_main.py --name agent --distpath dist
 
+package_windows_updater_bundle:
+  stage: build
+  script:
+    - bash xdr-soar-infra/8-scripts/package-windows-updater-bundle.sh
+  artifacts:
+    paths:
+      - xdr-soar-infra/.generated/windows-updater-bundle/
+      - xdr-soar-infra/.generated/windows-updater-bundle.zip
+
 push_to_mongodb:
   stage: push
   script:

@@ -120,16 +120,12 @@ bash deploy-all.sh
 8.  **Windows 更新流程改善**：Updater 已改為讀取外部 JSON / 環境變數設定，強制要求真實 MQTT 帳密、Broker 憑證 thumbprint 與 firmware API URL。
 9.  **映像版本治理**：所有第三方 K8s 映像都已改為明確版本加 digest，`validate-config.sh` 會拒絕新的 `:latest` 或 tag-only 第三方映像。
 10. **部署參數自動化**：若 `xdr-soar-infra/config/platform.env` 不存在，`bootstrap-platform-config.sh` 會自動產生可用的 bootstrap 設定，包含 base domain、MQTT NodePort 與更新 API URL。
-11. **TLS 完整落地**：`deploy-all.sh` 現在會自動生成自簽 CA、平台 TLS 憑證與 MQTT TLS 憑證；若指定 `XDR_SOAR_TLS_MODE=cert-manager` 且叢集已有 CRDs，Ingress 也可改走 cert-manager。
+11. **TLS 自動選擇**：預設 `XDR_SOAR_TLS_MODE=auto`，若叢集已有 cert-manager CRDs 就自動使用 ClusterIssuer，否則回退到 repo 生成的自簽 CA / TLS 憑證。
 12. **MQTT Broker 真正可用**：EMQX 現在會載入內建認證資料庫 bootstrap 檔與 TLS 憑證，並透過外部 Service 暴露 TLS listener 給 Windows updater。
-13. **Updater 設定自動產出**：`generate-updater-config.sh` 會根據 bootstrap secrets 與 MQTT 憑證 thumbprint 產生可直接分發的 `.generated/updater-config.json`。
+13. **Updater 交付自動化**：`package-windows-updater-bundle.sh` 會自動產生 `.generated/windows-updater-bundle.zip`，內含 updater script、install script、config JSON 與 CA 憑證；GitLab CI 也會輸出相同 bundle artifact。
 14. **Terraform 驗證補齊**：`validate-config.sh` 現在會使用本機 Terraform 或 Dockerized Terraform，GitLab CI 也有獨立 `validate_terraform` job。
 
-現在 repo 層面已沒有待補的基礎設施 TODO。剩下的是正式上線時的營運決策：
-
-1.  決定是否保留 bootstrap 自簽憑證，或改成 `XDR_SOAR_TLS_MODE=cert-manager` + 真實 ACME / DNS 環境。
-2.  將 `.generated/updater-config.json` 交付到 Windows Agent 所在主機，或以等價的環境變數方式注入。
-3.  第一次部署完成後，視需求輪替 `.generated/platform-secrets.env` 中的 bootstrap secrets，或改接外部 secret manager。
+現在 repo 層面已沒有待補的基礎設施 TODO；剩下的只是不影響 repo 完整性的正式營運政策，例如是否在上線後輪替 bootstrap secrets。
 
 -----
 

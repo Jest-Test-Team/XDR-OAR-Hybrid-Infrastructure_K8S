@@ -24,7 +24,7 @@ export XDR_SOAR_REQUIRE_PLATFORM_ENV=1
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/load-platform-env.sh"
 "$SCRIPT_DIR/generate-tls-assets.sh" >/dev/null
-"$SCRIPT_DIR/generate-updater-config.sh" "$ROOT_DIR/.generated/updater-config.json" >/dev/null
+"$SCRIPT_DIR/package-windows-updater-bundle.sh" "$ROOT_DIR/.generated/windows-updater-bundle" "$ROOT_DIR/.generated/windows-updater-bundle.zip" >/dev/null
 
 render_template() {
   local source_file="$1"
@@ -51,8 +51,22 @@ echo "[$(date)] Using platform domain $XDR_SOAR_BASE_DOMAIN and MQTT endpoint ${
 echo "[$(date)] Applying Namespace..."
 kubectl apply -f "$SCRIPT_DIR/../2-kubernetes-cluster/00-namespace.yaml"
 
+CERT_MANAGER_AVAILABLE=0
+if kubectl api-resources --api-group=cert-manager.io 2>/dev/null | grep -q '^clusterissuers'; then
+  CERT_MANAGER_AVAILABLE=1
+fi
+
+EFFECTIVE_TLS_MODE="$XDR_SOAR_TLS_MODE"
+if [ "$EFFECTIVE_TLS_MODE" = "auto" ]; then
+  if [ "$CERT_MANAGER_AVAILABLE" = "1" ]; then
+    EFFECTIVE_TLS_MODE="cert-manager"
+  else
+    EFFECTIVE_TLS_MODE="selfsigned"
+  fi
+fi
+
 # 1.5 TLS assets for ingress and MQTT.
-if [ "$XDR_SOAR_TLS_MODE" = "cert-manager" ] && kubectl api-resources --api-group=cert-manager.io 2>/dev/null | grep -q '^clusterissuers'; then
+if [ "$EFFECTIVE_TLS_MODE" = "cert-manager" ] && [ "$CERT_MANAGER_AVAILABLE" = "1" ]; then
   echo "[$(date)] Applying ClusterIssuer..."
   kubectl apply -f "$(render_template "$ROOT_DIR/2-kubernetes-cluster/01-clusterissuer.yaml")"
 else
@@ -105,3 +119,4 @@ echo "[$(date)] Applying Observability Stack..."
 kubectl apply -f "$SCRIPT_DIR/../9-observability/"
 
 echo "[$(date)] Deployment finished. Generated Windows updater config: $ROOT_DIR/.generated/updater-config.json"
+echo "[$(date)] Generated Windows updater bundle: $ROOT_DIR/.generated/windows-updater-bundle.zip"
