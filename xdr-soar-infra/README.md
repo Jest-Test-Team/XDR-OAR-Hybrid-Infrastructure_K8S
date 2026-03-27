@@ -19,6 +19,7 @@
 
 部署流程目前會：
 
-- 從 `config/platform.env` 載入正式網域、cert-manager 與 MQTT/API 端點設定
+- 若 `config/platform.env` 不存在，先自動產生 bootstrap 平台設定
 - 自動生成 `.generated/platform-secrets.env` 作為 bootstrap secrets
-- 渲染 Secrets、Supabase URLs、Ingress/TLS 與 ClusterIssuer 模板後再套用
+- 自動生成平台 TLS / MQTT TLS 憑證與 `.generated/updater-config.json`
+- 渲染 Secrets、Supabase URLs、Ingress/TLS、MQTT 與 ClusterIssuer 模板後再套用

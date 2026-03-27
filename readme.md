@@ -119,16 +119,17 @@ bash deploy-all.sh
 7.  **Firmware API 落地**：`xdr-soar-infra/apps/firmware-api/` 與對應 K8s manifests 現在提供 `/v1/firmware/<version>` 下載端點，直接從 MongoDB GridFS 讀取 agent binary。
 8.  **Windows 更新流程改善**：Updater 已改為讀取外部 JSON / 環境變數設定，強制要求真實 MQTT 帳密、Broker 憑證 thumbprint 與 firmware API URL。
 9.  **映像版本治理**：所有第三方 K8s 映像都已改為明確版本加 digest，`validate-config.sh` 會拒絕新的 `:latest` 或 tag-only 第三方映像。
-10. **部署參數化**：`deploy-all.sh` 會載入 `xdr-soar-infra/config/platform.env` 並自動生成 `.generated/platform-secrets.env`，再渲染 Secrets、Supabase URL 與 Ingress/TLS 設定。
-11. **Ingress/TLS 對齊**：Ingress 已加入 `tls` 與 cert-manager ClusterIssuer wiring，並從 `platform.env` 渲染正式網域而不是 `.local` host。
-12. **Terraform 驗證補齊**：`validate-config.sh` 現在會使用本機 Terraform 或 Dockerized Terraform，GitLab CI 也有獨立 `validate_terraform` job。
+10. **部署參數自動化**：若 `xdr-soar-infra/config/platform.env` 不存在，`bootstrap-platform-config.sh` 會自動產生可用的 bootstrap 設定，包含 base domain、MQTT NodePort 與更新 API URL。
+11. **TLS 完整落地**：`deploy-all.sh` 現在會自動生成自簽 CA、平台 TLS 憑證與 MQTT TLS 憑證；若指定 `XDR_SOAR_TLS_MODE=cert-manager` 且叢集已有 CRDs，Ingress 也可改走 cert-manager。
+12. **MQTT Broker 真正可用**：EMQX 現在會載入內建認證資料庫 bootstrap 檔與 TLS 憑證，並透過外部 Service 暴露 TLS listener 給 Windows updater。
+13. **Updater 設定自動產出**：`generate-updater-config.sh` 會根據 bootstrap secrets 與 MQTT 憑證 thumbprint 產生可直接分發的 `.generated/updater-config.json`。
+14. **Terraform 驗證補齊**：`validate-config.sh` 現在會使用本機 Terraform 或 Dockerized Terraform，GitLab CI 也有獨立 `validate_terraform` job。
 
-目前剩下的是部署前置條件，而不是 repo 缺件：
+現在 repo 層面已沒有待補的基礎設施 TODO。剩下的是正式上線時的營運決策：
 
-1.  複製 `xdr-soar-infra/config/platform.env.example` 為 `xdr-soar-infra/config/platform.env`，填入實際 base domain、ACME email、ClusterIssuer 與 MQTT/Firmware API 端點。
-2.  若目標叢集尚未安裝 cert-manager，`deploy-all.sh` 會略過 `ClusterIssuer`；此時需要自行提供 TLS Secret 或先安裝 cert-manager CRDs。
-3.  Windows 端點仍需部署 `updater-config.json` 或對應的環境變數，因為 updater 不再接受內建預設值。
-4.  `.generated/platform-secrets.env` 是 bootstrap secrets；正式環境建議在第一次部署後旋轉，或改接外部 secret manager。
+1.  決定是否保留 bootstrap 自簽憑證，或改成 `XDR_SOAR_TLS_MODE=cert-manager` + 真實 ACME / DNS 環境。
+2.  將 `.generated/updater-config.json` 交付到 Windows Agent 所在主機，或以等價的環境變數方式注入。
+3.  第一次部署完成後，視需求輪替 `.generated/platform-secrets.env` 中的 bootstrap secrets，或改接外部 secret manager。
 
 -----
 

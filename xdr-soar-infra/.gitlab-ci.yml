@@ -47,11 +47,16 @@ notify_mqtt:
     - : "${MQTT_BROKER_HOST:?Set MQTT_BROKER_HOST in CI variables.}"
     - : "${MQTT_PORT:=8883}"
     - : "${MQTT_TOPIC:=/agent/update}"
+    - : "${MQTT_USERNAME:?Set MQTT_USERNAME in CI variables.}"
+    - : "${MQTT_PASSWORD:?Set MQTT_PASSWORD in CI variables.}"
     - |
-      if [ -n "${MQTT_USERNAME:-}" ] && [ -n "${MQTT_PASSWORD:-}" ]; then
-        mosquitto_pub -h "$MQTT_BROKER_HOST" -p "$MQTT_PORT" -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
+      if [ -n "${MQTT_CA_FILE:-}" ]; then
+        mosquitto_pub -h "$MQTT_BROKER_HOST" -p "$MQTT_PORT" --cafile "$MQTT_CA_FILE" \
+          ${MQTT_TLS_INSECURE:+--insecure} \
+          -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
           -t "$MQTT_TOPIC" -m "{\"action\":\"update\",\"version\":\"${AGENT_VERSION}\",\"sha256\":\"${AGENT_SHA256}\"}"
       else
         mosquitto_pub -h "$MQTT_BROKER_HOST" -p "$MQTT_PORT" \
+          -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
           -t "$MQTT_TOPIC" -m "{\"action\":\"update\",\"version\":\"${AGENT_VERSION}\",\"sha256\":\"${AGENT_SHA256}\"}"
       fi

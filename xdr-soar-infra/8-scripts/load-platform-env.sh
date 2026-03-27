@@ -13,6 +13,10 @@ PLATFORM_ENV="$ROOT_DIR/config/platform.env"
 PLATFORM_ENV_EXAMPLE="$ROOT_DIR/config/platform.env.example"
 SECRETS_ENV="${XDR_SOAR_SECRETS_ENV:-$ROOT_DIR/.generated/platform-secrets.env}"
 
+if [ ! -f "$PLATFORM_ENV" ]; then
+  "$SCRIPT_DIR/bootstrap-platform-config.sh" "$PLATFORM_ENV"
+fi
+
 load_env_file() {
   local env_file="$1"
   set -a
@@ -40,8 +44,12 @@ load_env_file "$SECRETS_ENV"
 : "${XDR_SOAR_ACME_EMAIL:?Set XDR_SOAR_ACME_EMAIL in $PLATFORM_ENV or $PLATFORM_ENV_EXAMPLE.}"
 
 export XDR_SOAR_INGRESS_CLASS="${XDR_SOAR_INGRESS_CLASS:-nginx}"
+export XDR_SOAR_TLS_MODE="${XDR_SOAR_TLS_MODE:-selfsigned}"
 export XDR_SOAR_ACME_SERVER="${XDR_SOAR_ACME_SERVER:-https://acme-v02.api.letsencrypt.org/directory}"
 export XDR_SOAR_TLS_SECRET_NAME="${XDR_SOAR_TLS_SECRET_NAME:-xdr-soar-platform-tls}"
+export XDR_SOAR_MQTT_TLS_SECRET_NAME="${XDR_SOAR_MQTT_TLS_SECRET_NAME:-xdr-soar-mqtt-tls}"
+export XDR_SOAR_MQTT_SERVICE_TYPE="${XDR_SOAR_MQTT_SERVICE_TYPE:-NodePort}"
+export XDR_SOAR_MQTT_NODE_PORT="${XDR_SOAR_MQTT_NODE_PORT:-30883}"
 
 export XDR_SOAR_ADMIN_HOST="${XDR_SOAR_ADMIN_HOST:-admin.${XDR_SOAR_BASE_DOMAIN}}"
 export XDR_SOAR_DASHBOARD_HOST="${XDR_SOAR_DASHBOARD_HOST:-dashboard.${XDR_SOAR_BASE_DOMAIN}}"
@@ -56,7 +64,13 @@ export XDR_SOAR_GOTRUE_URI_ALLOW_LIST="https://${XDR_SOAR_DASHBOARD_HOST},https:
 export XDR_SOAR_DASHBOARD_PUBLIC_URL="https://${XDR_SOAR_STUDIO_HOST}"
 
 export MQTT_BROKER_HOST="${MQTT_BROKER_HOST:-mqtt.${XDR_SOAR_BASE_DOMAIN}}"
-export MQTT_BROKER_PORT="${MQTT_BROKER_PORT:-8883}"
+if [ -n "${MQTT_BROKER_PORT:-}" ]; then
+  export MQTT_BROKER_PORT
+elif [ "$XDR_SOAR_MQTT_SERVICE_TYPE" = "NodePort" ]; then
+  export MQTT_BROKER_PORT="$XDR_SOAR_MQTT_NODE_PORT"
+else
+  export MQTT_BROKER_PORT="8883"
+fi
 export MQTT_TOPIC="${MQTT_TOPIC:-/agent/update}"
 export UPDATE_API_BASE_URL="${UPDATE_API_BASE_URL:-https://${XDR_SOAR_API_HOST}/v1/firmware}"
 

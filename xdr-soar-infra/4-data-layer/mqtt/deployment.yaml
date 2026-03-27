@@ -16,6 +16,16 @@ spec:
       containers:
       - name: emqx
         image: emqx/emqx:5.5.0@sha256:d5703ac4b6cdba024657428661a6334fa4807705286036634ab8ccb73f3e1aef
+        volumeMounts:
+        - name: mqtt-config
+          mountPath: /opt/emqx/etc/base.hocon
+          subPath: base.hocon
+        - name: mqtt-config
+          mountPath: /opt/emqx/etc/auth-built-in-db-bootstrap.csv
+          subPath: auth-built-in-db-bootstrap.csv
+        - name: mqtt-tls
+          mountPath: /opt/emqx/etc/certs
+          readOnly: true
         ports:
         - containerPort: 1883
         - containerPort: 8883
@@ -36,3 +46,10 @@ spec:
             port: 1883
           initialDelaySeconds: 15
           periodSeconds: 20
+      volumes:
+      - name: mqtt-config
+        configMap:
+          name: mqtt-broker-config
+      - name: mqtt-tls
+        secret:
+          secretName: ${XDR_SOAR_MQTT_TLS_SECRET_NAME}

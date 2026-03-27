@@ -23,6 +23,8 @@ fi
 export XDR_SOAR_REQUIRE_PLATFORM_ENV=1
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/load-platform-env.sh"
+"$SCRIPT_DIR/generate-tls-assets.sh" >/dev/null
+"$SCRIPT_DIR/generate-updater-config.sh" "$ROOT_DIR/.generated/updater-config.json" >/dev/null
 
 render_template() {
   local source_file="$1"
@@ -43,17 +45,32 @@ apply_rendered_dir() {
 
 echo "[$(date)] Starting XDR/SOAR Infrastructure deployment..."
 
+echo "[$(date)] Using platform domain $XDR_SOAR_BASE_DOMAIN and MQTT endpoint ${MQTT_BROKER_HOST}:${MQTT_BROKER_PORT}"
+
 # 1. Create Namespace (Idempotent)
 echo "[$(date)] Applying Namespace..."
 kubectl apply -f "$SCRIPT_DIR/../2-kubernetes-cluster/00-namespace.yaml"
 
-# 1.5 Platform TLS issuer when cert-manager CRDs are present.
-if kubectl api-resources --api-group=cert-manager.io 2>/dev/null | grep -q '^clusterissuers'; then
+# 1.5 TLS assets for ingress and MQTT.
+if [ "$XDR_SOAR_TLS_MODE" = "cert-manager" ] && kubectl api-resources --api-group=cert-manager.io 2>/dev/null | grep -q '^clusterissuers'; then
   echo "[$(date)] Applying ClusterIssuer..."
   kubectl apply -f "$(render_template "$ROOT_DIR/2-kubernetes-cluster/01-clusterissuer.yaml")"
 else
-  echo "[$(date)] Skipping ClusterIssuer because cert-manager CRDs are not present in the target cluster."
+  echo "[$(date)] Applying locally generated ingress TLS secret..."
+  kubectl create secret tls "$XDR_SOAR_TLS_SECRET_NAME" \
+    --namespace xdr-soar \
+    --cert "$ROOT_DIR/.generated/tls/platform.crt" \
+    --key "$ROOT_DIR/.generated/tls/platform.key" \
+    --dry-run=client -o yaml | kubectl apply -f -
 fi
+
+echo "[$(date)] Applying MQTT TLS secret..."
+kubectl create secret generic "$XDR_SOAR_MQTT_TLS_SECRET_NAME" \
+  --namespace xdr-soar \
+  --from-file=tls.crt="$ROOT_DIR/.generated/tls/mqtt.crt" \
+  --from-file=tls.key="$ROOT_DIR/.generated/tls/mqtt.key" \
+  --from-file=ca.crt="$ROOT_DIR/.generated/tls/ca.crt" \
+  --dry-run=client -o yaml | kubectl apply -f -
 
 # 2. Network Policies
 echo "[$(date)] Applying Network Policies..."
@@ -62,11 +79,12 @@ kubectl apply -f "$SCRIPT_DIR/../3-k8s-network-policies/"
 # 3. Data Layer (Secrets, Services, StatefulSets, then stateless dependencies)
 echo "[$(date)] Applying Data Layer (Kafka, MongoDB, InfluxDB, etc.)..."
 kubectl apply -f "$(render_template "$ROOT_DIR/4-data-layer/00-secrets.yaml")"
-kubectl apply -f "$SCRIPT_DIR/../4-data-layer/services.yaml"
+kubectl apply -f "$(render_template "$ROOT_DIR/4-data-layer/services.yaml")"
 kubectl apply -f "$SCRIPT_DIR/../4-data-layer/mongodb/statefulset.yaml"
 kubectl apply -f "$SCRIPT_DIR/../4-data-layer/influxdb/statefulset.yaml"
 kubectl apply -f "$SCRIPT_DIR/../4-data-layer/kafka/statefulset.yaml"
-kubectl apply -f "$SCRIPT_DIR/../4-data-layer/mqtt/deployment.yaml"
+kubectl apply -f "$(render_template "$ROOT_DIR/4-data-layer/mqtt/00-configmap.yaml")"
+kubectl apply -f "$(render_template "$ROOT_DIR/4-data-layer/mqtt/deployment.yaml")"
 kubectl apply -f "$SCRIPT_DIR/../4-data-layer/redis/deployment.yaml"
 apply_rendered_dir "$ROOT_DIR/4-data-layer/supabase"
 
@@ -86,4 +104,4 @@ kubectl apply -f "$(render_template "$ROOT_DIR/6-frontend-ui/ingress.yaml")"
 echo "[$(date)] Applying Observability Stack..."
 kubectl apply -f "$SCRIPT_DIR/../9-observability/"
 
-echo "[$(date)] Deployment finished. Run 'kubectl get pods -n xdr-soar' to monitor status."
+echo "[$(date)] Deployment finished. Generated Windows updater config: $ROOT_DIR/.generated/updater-config.json"
