@@ -43,13 +43,13 @@
 | 類別 | 組件 | 技術棧 | 職責 |
 | :--- | :--- | :--- | :--- |
 | **數據存儲** | 時序資料庫 | InfluxDB 2.7 | 儲存從 Agent 回傳的高頻 Risk Scores。 |
-| | 關聯資料庫 | Supabase (PG) | 儲存警報、設備資產與用戶操作日誌。 |
+| | 關聯資料平台 | Supabase Stack | 由 Postgres, GoTrue, PostgREST, Studio 與 API Gateway 組成。 |
 | | 文件存儲 | MongoDB 6.0 | 以 GridFS 儲存 `.pt` 模型與 Agent 韌體。 |
 | **消息中心** | MQTT Broker | EMQX 5.0 | Agent 遙測數據接入與反向更新指令發送。 |
 | | 數據匯流排 | Kafka | 高併發日誌削峰填谷，供偵測引擎消費。 |
 | **偵測引擎** | ML 推論伺服器 | NVIDIA Triton | 並行運行 9 個不同維度的 ML 偵測模型。 |
 | | 特徵掃描 | YARA Instance | 針對可疑二進位檔進行靜態特徵匹配。 |
-| **監控系統** | 可觀測性 | Grafana 三件套 | 目標架構包含 Prometheus (指標)、Loki (日誌)、Grafana (面板)；目前尚未在 repo 內實作。 |
+| **監控系統** | 可觀測性 | Grafana 三件套 | Prometheus (指標)、Loki (日誌)、Grafana (面板) 已在 `xdr-soar-infra/9-observability/` 內提供 manifests。 |
 
 -----
 
@@ -105,22 +105,24 @@ bash deploy-all.sh
 目前 repo 的 ownership model 為：
 
 1.  **Terraform 僅管理 VMware 網路邊界**：`xdr-soar-infra/1-vmware-esxi/` 現在是單一 Terraform root，包含 version pinning、variables、outputs 與 example tfvars。
-2.  **Kubernetes 採 YAML-first**：Data Layer、Security Engine、Frontend 與 NetworkPolicy 由 `kubectl apply` + shell script 管理。
+2.  **Kubernetes 採 YAML-first**：Data Layer、Security Engine、Frontend、Observability 與 NetworkPolicy 由 `kubectl apply` + shell script 管理。
 3.  **Cilium 以 Helm 安裝**：使用 `xdr-soar-infra/2-kubernetes-cluster/install-cilium.sh` 渲染 `cilium-values.yaml` 後安裝。
 
 本 repo 已完成以下改良：
 
 1.  **冪等部署**：`deploy-all.sh` 改為以腳本所在目錄為基準，並使用 `kubectl apply` 套用 Namespace、Secrets、Services、StatefulSets 與前端 Ingress。
-2.  **狀態服務基礎強化**：MongoDB、Kafka、InfluxDB 已具備 PVC、固定 Service、基本 probes 與初始化環境變數。
-3.  **資料層憑證外提**：內嵌於 manifest 的 DB 密碼已移至 `4-data-layer/00-secrets.yaml`。
-4.  **NetPol 收斂**：移除全域寬鬆 egress 規則，改為 workload-specific egress/ingress。
-5.  **Windows 更新流程改善**：Updater 已加入 payload 驗證、SHA-256 比對、備份與實際 binary replacement。
+2.  **狀態服務基礎強化**：MongoDB、Kafka、InfluxDB 與 Supabase Postgres 已具備 PVC、固定 Service、基本 probes 與初始化環境變數。
+3.  **資料層與 Supabase 擴展**：`4-data-layer/supabase/` 現在包含 Postgres, GoTrue, PostgREST, Postgres Meta, Studio 與 Gateway manifests。
+4.  **NetPol 收斂**：移除全域寬鬆 egress 規則，改為 workload-specific egress/ingress，並覆蓋 public web routes 與 observability。
+5.  **可觀測性落地**：`9-observability/` 新增 Prometheus, Loki, Promtail, Grafana。
+6.  **自研鏡像來源補齊**：`xdr-soar-infra/apps/` 提供 detection-engine, ml-training, yara-scanner, admin-frontend, soar-dashboard 的 build context 與 Dockerfile。
+7.  **Windows 更新流程改善**：Updater 已加入 payload 驗證、SHA-256 比對、備份、實際 binary replacement，以及持久 MQTT over TLS 訂閱回圈。
 
 仍然尚未在 repo 中實作的部分：
 
-1.  Grafana / Loki / Prometheus
-2.  自研引擎與前端的實際 source code / Docker build context
-3.  完整的 Supabase stack
+1.  實際的 firmware download API 仍未在 repo 中實作
+2.  部分第三方映像版本仍需依你的實際部署策略再做 pinning 與驗證
+3.  Windows Agent MQTT 認證憑證與 broker 帳密仍需以實際 secrets 值替換
 
 -----
 

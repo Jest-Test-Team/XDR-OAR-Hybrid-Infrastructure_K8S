@@ -14,16 +14,16 @@ Completed from this report:
 - added Secrets-backed data-layer config, split stateless data-layer deployments, and fixed deploy order
 - replaced the blanket internal egress policy with workload-specific network policies
 - added a Cilium install helper and corrected the docs to stop treating `cilium-values.yaml` as a raw manifest
-- added frontend ingress, CI/runtime helper stubs, and a local validation script
+- added frontend ingress, observability manifests, fuller Supabase manifests, CI/runtime helper stubs, and a local validation script
+- added buildable internal application source trees and Dockerfiles for the previously placeholder images
+- replaced the Windows updater stub with a persistent MQTT-over-TLS listener loop
 - aligned `readme.md` and `xdr-soar-infra/README.md` with the current ownership model
 
 Still intentionally remaining:
 
-- observability stack manifests are still not implemented
-- custom engine/frontend images still do not have real application source in this repo
-- the Supabase portion is still a slim Postgres placeholder rather than a full Supabase deployment
+- the firmware download API path used by the Windows updater is still not implemented in this repo
+- some third-party image tags still need production-grade pinning and verification
 - Terraform validation still depends on having `terraform` installed locally
-- the Windows updater still documents that a real MQTT client library is needed for persistent subscription handling
 
 Treat the detailed findings below as the original inspection baseline that drove the implementation work, not as a fully current post-fix audit.
 

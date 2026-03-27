@@ -9,6 +9,13 @@ validate_infra:
   script:
     - bash xdr-soar-infra/8-scripts/validate-config.sh
 
+build_internal_images:
+  stage: build
+  tags: [isolated-runner]
+  script:
+    - echo "Building internal application images..."
+    - bash xdr-soar-infra/8-scripts/build-images.sh
+
 build_agent:
   stage: build
   tags: [isolated-runner]

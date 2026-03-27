@@ -18,6 +18,18 @@ else
   echo "[$(date)] Skipping Terraform checks because terraform is not installed."
 fi
 
+echo "[$(date)] Validating Python helper and app sources..."
+if command -v python3 >/dev/null 2>&1; then
+  python3 -m py_compile \
+    "$ROOT_DIR/agent_main.py" \
+    "$ROOT_DIR/scripts/upload_to_gridfs.py" \
+    "$ROOT_DIR/apps/detection-engine/main.py" \
+    "$ROOT_DIR/apps/ml-training/main.py" \
+    "$ROOT_DIR/apps/yara-scanner/main.py"
+else
+  echo "[$(date)] Skipping Python checks because python3 is not installed."
+fi
+
 echo "[$(date)] Validating Kubernetes manifest YAML syntax..."
 if command -v ruby >/dev/null 2>&1; then
   while IFS= read -r manifest; do
