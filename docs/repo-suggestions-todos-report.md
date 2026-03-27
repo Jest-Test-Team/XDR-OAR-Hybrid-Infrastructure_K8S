@@ -3,6 +3,30 @@
 Date: 2026-03-26
 Scope: `note.txt`, `xdr-soar-infra/`, `readme.md`, and `docs/structure.md`
 
+## Implementation Status
+
+As of the implementation pass completed later on 2026-03-26, this report is no longer a pure description of the current repo state.
+
+Completed from this report:
+
+- flattened the VMware Terraform into one root and added `versions.tf`, `providers.tf`, `variables.tf`, `outputs.tf`, and `terraform.tfvars.example`
+- removed the accidental nested Terraform root under `xdr-soar-infra/1-vmware-esxi/1-vmware-esxi/`
+- added Secrets-backed data-layer config, split stateless data-layer deployments, and fixed deploy order
+- replaced the blanket internal egress policy with workload-specific network policies
+- added a Cilium install helper and corrected the docs to stop treating `cilium-values.yaml` as a raw manifest
+- added frontend ingress, CI/runtime helper stubs, and a local validation script
+- aligned `readme.md` and `xdr-soar-infra/README.md` with the current ownership model
+
+Still intentionally remaining:
+
+- observability stack manifests are still not implemented
+- custom engine/frontend images still do not have real application source in this repo
+- the Supabase portion is still a slim Postgres placeholder rather than a full Supabase deployment
+- Terraform validation still depends on having `terraform` installed locally
+- the Windows updater still documents that a real MQTT client library is needed for persistent subscription handling
+
+Treat the detailed findings below as the original inspection baseline that drove the implementation work, not as a fully current post-fix audit.
+
 ## Quick Snapshot
 
 - `note.txt` is empty (`0` bytes), so it did not provide extra requirements or TODO context.
