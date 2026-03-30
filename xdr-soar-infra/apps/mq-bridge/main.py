@@ -22,8 +22,16 @@ def write_json(handler: BaseHTTPRequestHandler, payload: dict, status: int = HTT
     handler.wfile.write(body)
 
 
+def build_routing_key(message: dict) -> str:
+    tenant = str(message.get("tenant_id") or "*")
+    device = str(message.get("device_id") or "*")
+    layer = str(message.get("layer") or "*")
+    category = str(message.get("category") or "*")
+    return f"events.{tenant}.{device}.{layer}.{category}"
+
+
 class Handler(BaseHTTPRequestHandler):
-    server_version = "MQBridge/0.1"
+    server_version = "MQBridge/0.2"
 
     def log_message(self, fmt: str, *args) -> None:
         return
@@ -42,6 +50,31 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
         write_json(self, {"error": "not found"}, HTTPStatus.NOT_FOUND)
+
+    def do_POST(self) -> None:
+        if self.path != "/publish":
+            write_json(self, {"error": "not found"}, HTTPStatus.NOT_FOUND)
+            return
+
+        content_length = int(self.headers.get("Content-Length", "0"))
+        raw_body = self.rfile.read(content_length)
+        try:
+            message = json.loads(raw_body or "{}")
+        except json.JSONDecodeError:
+            write_json(self, {"error": "invalid json"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        write_json(
+            self,
+            {
+                "status": "bridged",
+                "input_topic": INPUT_TOPIC,
+                "output_topic": OUTPUT_TOPIC,
+                "routing_key": build_routing_key(message),
+                "message": message,
+            },
+            HTTPStatus.ACCEPTED,
+        )
 
 
 def main() -> None:

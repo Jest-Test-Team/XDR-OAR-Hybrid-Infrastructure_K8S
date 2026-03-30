@@ -9,7 +9,15 @@ Planned responsibilities:
 - stream normalization
 - Kafka topic bootstrap
 
-Initial placeholder services in this directory are intentionally thin. They exist to establish:
+Current implementation status:
+
+- `ingest-gateway`: partially implemented HTTP ingest contract with identity fallback, event validation, and routing-key generation
+- `mq-bridge`: partial bridge stub with routing-key mapping
+- `stream-processor`: partially implemented normalization and schema-QA behavior derived from AXIOM concepts
+
+These services are still not connected to real MQTT/AMQP/Kafka clients yet.
+
+Initial placeholder services in this directory exist to establish:
 
 - repo layout
 - deployment order

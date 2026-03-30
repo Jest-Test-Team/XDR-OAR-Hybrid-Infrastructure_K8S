@@ -512,6 +512,33 @@ This order keeps `SOAR_K8S` deployable at every stage and avoids building UI aro
 4. Replace the current placeholder `detection-engine` expansion path with a real AXIOM-derived runtime.
 5. Plan the first database migration set for incidents, playbooks, commands, approvals, and audit logs.
 
+## Progress Update
+
+As of 2026-03-30, the following Phase 0 and early Phase 1 items now exist in `SOAR_K8S`:
+
+- canonical docs:
+  - `docs/event-schema.md`
+  - `docs/command-schema.md`
+  - `docs/messaging-contract.md`
+- event-plane scaffold:
+  - `xdr-soar-infra/5-event-plane/`
+  - `apps/ingest-gateway/`
+  - `apps/mq-bridge/`
+  - `apps/stream-processor/`
+- deployment and workflow wiring:
+  - `8-scripts/deploy-all.sh`
+  - `8-scripts/build-images.sh`
+  - `8-scripts/validate-config.sh`
+
+Current maturity:
+
+- repo structure: in place
+- contracts: in place
+- placeholder event-plane runtime: partially implemented
+- real message-bus integration: not yet implemented
+- AXIOM rule engine migration: not yet implemented
+- Cloud Console SOAR control plane migration: not yet implemented
+
 ## Bottom Line
 
 `SOAR_K8S` already has the cluster, security boundaries, data services, deployment automation, and firmware path. What it lacks is the mature runtime software. The cleanest expansion path is:
