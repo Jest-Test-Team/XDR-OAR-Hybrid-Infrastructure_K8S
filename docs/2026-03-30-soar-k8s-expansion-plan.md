@@ -536,6 +536,7 @@ Current maturity:
 - contracts: in place
 - event-plane runtime: partially implemented
 - ingest-gateway Kafka publish path: implemented
+- stream-processor Kafka consume/publish path: implemented
 - real message-bus integration: not yet implemented
 - AXIOM rule engine migration: not yet implemented
 - Cloud Console SOAR control plane migration: not yet implemented

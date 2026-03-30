@@ -31,8 +31,9 @@ Current maturity:
 
 - contracts and deployment wiring exist
 - `ingest-gateway` has a Kafka producer path
-- partial normalization logic exists
-- `mq-bridge` and `stream-processor` still lack real transport clients
+- `stream-processor` has a Kafka consume/publish path
+- partial normalization and schema-QA logic exists
+- `mq-bridge` still lacks a real transport client
 - real MQTT/AMQP client integration is not yet implemented
 
 ### 3. Detection Plane
@@ -113,6 +114,7 @@ It currently defines:
 - MQTT broker host/ports
 - ingest path
 - event-plane topic names
+- stream-processor consumer group
 
 This is a preparation step for real client integration and keeps the deployment contract stable while implementation catches up.
 
@@ -120,7 +122,6 @@ This is a preparation step for real client integration and keeps the deployment 
 
 The following are still not implemented:
 
-- real Kafka consumers in the event-plane services
 - real MQTT or AMQP client connectivity in the event-plane services
 - detection-engine consumption of normalized topics
 - incident emission to a SOAR control plane
@@ -130,9 +131,9 @@ The following are still not implemented:
 
 The next meaningful runtime step is:
 
-- implement a real Kafka consumer in `stream-processor`
+- implement transport logic in `mq-bridge`
 
 After that:
 
-- implement transport logic in `mq-bridge`
+- wire `detection-engine` to consume normalized or enriched topics
 - wire normalized output into the future rule engine

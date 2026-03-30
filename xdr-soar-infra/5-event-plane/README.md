@@ -13,12 +13,13 @@ Current implementation status:
 
 - `ingest-gateway`: Go service with actual Kafka publish path, identity fallback, event validation, and routing-key generation
 - `mq-bridge`: partial bridge stub with routing-key mapping
-- `stream-processor`: partially implemented normalization and schema-QA behavior derived from AXIOM concepts
+- `stream-processor`: Go service with Kafka consume/publish flow plus AXIOM-style normalization and schema-QA behavior
 
 Current transport maturity:
 
 - Kafka publish path exists in `ingest-gateway`
-- `mq-bridge` and `stream-processor` still do not have real transport clients
+- Kafka consume/publish path exists in `stream-processor`
+- `mq-bridge` still does not have a real transport client
 - AMQP and MQTT integration is still pending
 
 Initial placeholder services in this directory exist to establish:

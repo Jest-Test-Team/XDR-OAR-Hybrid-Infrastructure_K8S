@@ -14,3 +14,4 @@ data:
   MQ_BRIDGE_OUTPUT_TOPIC: "telemetry.normalized"
   STREAM_PROCESSOR_SOURCE_TOPIC: "telemetry.normalized"
   STREAM_PROCESSOR_SINK_TOPIC: "telemetry.enriched"
+  STREAM_PROCESSOR_GROUP_ID: "stream-processor"

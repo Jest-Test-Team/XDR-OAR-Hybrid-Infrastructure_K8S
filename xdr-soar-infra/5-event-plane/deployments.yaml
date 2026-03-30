@@ -29,6 +29,11 @@ spec:
             configMapKeyRef:
               name: event-plane-config
               key: KAFKA_BOOTSTRAP_SERVERS
+        - name: KAFKA_TOPIC
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQ_BRIDGE_INPUT_TOPIC
         - name: MQTT_BROKER_HOST
           valueFrom:
             configMapKeyRef:
@@ -96,6 +101,11 @@ spec:
             configMapKeyRef:
               name: event-plane-config
               key: KAFKA_BOOTSTRAP_SERVERS
+        - name: KAFKA_GROUP_ID
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: STREAM_PROCESSOR_GROUP_ID
         - name: MQTT_BROKER_HOST
           valueFrom:
             configMapKeyRef:
