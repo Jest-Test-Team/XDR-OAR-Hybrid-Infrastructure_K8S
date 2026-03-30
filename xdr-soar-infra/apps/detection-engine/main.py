@@ -2,11 +2,18 @@
 
 import json
 import os
+import threading
 import time
 import urllib.error
 import urllib.request
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+try:
+    from kafka import KafkaConsumer, KafkaProducer
+except ImportError:  # pragma: no cover - dependency availability is environment-specific
+    KafkaConsumer = None
+    KafkaProducer = None
 
 
 HOST = "0.0.0.0"
@@ -14,11 +21,19 @@ PORT = int(os.getenv("PORT", "8080"))
 SUPABASE_REST_URL = os.getenv("SUPABASE_REST_URL", "").rstrip("/")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY", "")
 RISK_THRESHOLD = int(os.getenv("RISK_THRESHOLD", "85"))
+KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "")
+KAFKA_SOURCE_TOPIC = os.getenv("KAFKA_SOURCE_TOPIC", "telemetry.enriched")
+KAFKA_SIGNAL_TOPIC = os.getenv("KAFKA_SIGNAL_TOPIC", "detections.signals")
+KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "detection-engine")
+KAFKA_ENABLED = os.getenv("KAFKA_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
 
 METRICS = {
     "telemetry_events_total": 0,
     "alerts_published_total": 0,
     "alert_publish_failures_total": 0,
+    "kafka_consumed_total": 0,
+    "signals_published_total": 0,
+    "signal_publish_failures_total": 0,
 }
 
 
@@ -53,6 +68,133 @@ def publish_alert(alert: dict) -> bool:
         return False
 
 
+def evaluate_detection(telemetry: dict) -> dict:
+    hostname = telemetry.get("hostname") or telemetry.get("device_id") or "unknown"
+    severity_value = telemetry.get("severity", 0)
+    if isinstance(severity_value, str):
+        severity_map = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+        severity = severity_map.get(severity_value.lower(), 0)
+    else:
+        try:
+            severity = int(severity_value)
+        except (TypeError, ValueError):
+            severity = 0
+
+    indicators = telemetry.get("indicators", [])
+    if not isinstance(indicators, list):
+        indicators = []
+
+    risk_score = telemetry.get("risk_score")
+    if risk_score is None:
+        risk_score = min(100, severity * 10 + len(indicators) * 8 + len(json.dumps(telemetry)) % 25)
+    try:
+        risk_score = float(risk_score)
+    except (TypeError, ValueError):
+        risk_score = 0.0
+
+    signal = {
+        "event_id": telemetry.get("event_id"),
+        "tenant_id": telemetry.get("tenant_id"),
+        "device_id": telemetry.get("device_id"),
+        "hostname": hostname,
+        "risk_score": risk_score,
+        "severity": telemetry.get("severity", "medium"),
+        "layer": telemetry.get("layer"),
+        "category": telemetry.get("category"),
+        "indicators": indicators,
+        "generated_at": int(time.time()),
+        "source": "detection-engine",
+    }
+
+    return {
+        "hostname": hostname,
+        "risk_score": risk_score,
+        "alert_emitted": False,
+        "signal": signal,
+    }
+
+
+def maybe_publish_alert(result: dict) -> dict:
+    if result["risk_score"] >= RISK_THRESHOLD:
+        if publish_alert(result["signal"]):
+            METRICS["alerts_published_total"] += 1
+            result["alert_emitted"] = True
+        else:
+            METRICS["alert_publish_failures_total"] += 1
+    return result
+
+
+def maybe_start_kafka_worker() -> None:
+    if not KAFKA_ENABLED or not KAFKA_BROKERS.strip():
+        return
+    if KafkaConsumer is None or KafkaProducer is None:
+        print("detection-engine: kafka-python not installed; Kafka worker disabled", flush=True)
+        return
+
+    worker = threading.Thread(target=kafka_worker, daemon=True)
+    worker.start()
+
+
+def kafka_worker() -> None:
+    brokers = [item.strip() for item in KAFKA_BROKERS.split(",") if item.strip()]
+    if not brokers:
+        return
+
+    while True:
+        consumer = None
+        producer = None
+        try:
+            consumer = KafkaConsumer(
+                KAFKA_SOURCE_TOPIC,
+                bootstrap_servers=brokers,
+                group_id=KAFKA_GROUP_ID,
+                enable_auto_commit=True,
+                auto_offset_reset="latest",
+                value_deserializer=lambda value: json.loads(value.decode("utf-8")),
+            )
+            producer = KafkaProducer(
+                bootstrap_servers=brokers,
+                value_serializer=lambda value: json.dumps(value).encode("utf-8"),
+                key_serializer=lambda value: value.encode("utf-8") if value else None,
+            )
+            print(
+                f"detection-engine: consuming from {KAFKA_SOURCE_TOPIC} and publishing to {KAFKA_SIGNAL_TOPIC}",
+                flush=True,
+            )
+
+            for message in consumer:
+                payload = message.value
+                if isinstance(payload, dict) and "event" in payload and isinstance(payload["event"], dict):
+                    telemetry = payload["event"]
+                else:
+                    telemetry = payload if isinstance(payload, dict) else {}
+
+                METRICS["kafka_consumed_total"] += 1
+                METRICS["telemetry_events_total"] += 1
+                result = maybe_publish_alert(evaluate_detection(telemetry))
+                key = result["signal"].get("event_id") or telemetry.get("device_id") or "unknown"
+
+                try:
+                    producer.send(KAFKA_SIGNAL_TOPIC, key=key, value=result["signal"]).get(timeout=5)
+                    METRICS["signals_published_total"] += 1
+                except Exception:
+                    METRICS["signal_publish_failures_total"] += 1
+        except Exception as exc:
+            print(f"detection-engine: kafka worker error: {exc}", flush=True)
+            time.sleep(5)
+        finally:
+            if consumer is not None:
+                try:
+                    consumer.close()
+                except Exception:
+                    pass
+            if producer is not None:
+                try:
+                    producer.close()
+                except Exception:
+                    pass
+
+
 def render_metrics() -> str:
     return "\n".join(
         [
@@ -65,6 +207,15 @@ def render_metrics() -> str:
             "# HELP detection_engine_alert_publish_failures_total Number of failed alert publications.",
             "# TYPE detection_engine_alert_publish_failures_total counter",
             f"detection_engine_alert_publish_failures_total {METRICS['alert_publish_failures_total']}",
+            "# HELP detection_engine_kafka_consumed_total Number of Kafka messages consumed.",
+            "# TYPE detection_engine_kafka_consumed_total counter",
+            f"detection_engine_kafka_consumed_total {METRICS['kafka_consumed_total']}",
+            "# HELP detection_engine_signals_published_total Number of detection signals published.",
+            "# TYPE detection_engine_signals_published_total counter",
+            f"detection_engine_signals_published_total {METRICS['signals_published_total']}",
+            "# HELP detection_engine_signal_publish_failures_total Number of failed signal publications.",
+            "# TYPE detection_engine_signal_publish_failures_total counter",
+            f"detection_engine_signal_publish_failures_total {METRICS['signal_publish_failures_total']}",
         ]
     ) + "\n"
 
@@ -83,6 +234,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "status": "ok",
                     "time": int(time.time()),
                     "supabase_rest_url": SUPABASE_REST_URL or None,
+                    "configured_backends": {
+                        "kafka_brokers": KAFKA_BROKERS or None,
+                        "kafka_source_topic": KAFKA_SOURCE_TOPIC,
+                        "kafka_signal_topic": KAFKA_SIGNAL_TOPIC,
+                        "kafka_group_id": KAFKA_GROUP_ID,
+                        "kafka_enabled": KAFKA_ENABLED,
+                    },
                 },
             )
             return
@@ -112,34 +270,11 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
 
         METRICS["telemetry_events_total"] += 1
-        host = telemetry.get("hostname", "unknown")
-        severity = int(telemetry.get("severity", 0))
-        indicators = telemetry.get("indicators", [])
-        risk_score = min(100, severity * 10 + len(indicators) * 8 + len(json.dumps(telemetry)) % 25)
-
-        response = {
-            "hostname": host,
-            "risk_score": risk_score,
-            "alert_emitted": False,
-        }
-
-        if risk_score >= RISK_THRESHOLD:
-            alert = {
-                "hostname": host,
-                "risk_score": risk_score,
-                "indicators": indicators,
-                "generated_at": int(time.time()),
-            }
-            if publish_alert(alert):
-                METRICS["alerts_published_total"] += 1
-                response["alert_emitted"] = True
-            else:
-                METRICS["alert_publish_failures_total"] += 1
-
-        json_response(self, response)
+        json_response(self, maybe_publish_alert(evaluate_detection(telemetry)))
 
 
 def main() -> None:
+    maybe_start_kafka_worker()
     server = ThreadingHTTPServer((HOST, PORT), RequestHandler)
     print(f"detection-engine listening on {HOST}:{PORT}", flush=True)
     server.serve_forever()

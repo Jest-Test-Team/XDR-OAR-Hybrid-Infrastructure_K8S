@@ -34,3 +34,7 @@ The implementation target is the richer ingest and stream-processing model docum
 - `SOAR_K8S/docs/event-schema.md`
 - `SOAR_K8S/docs/messaging-contract.md`
 - `SOAR_K8S/docs/2026-03-30-soar-k8s-expansion-plan.md`
+
+Current downstream integration:
+
+- `detection-engine` is now configured to consume `telemetry.enriched` and publish `detections.signals`

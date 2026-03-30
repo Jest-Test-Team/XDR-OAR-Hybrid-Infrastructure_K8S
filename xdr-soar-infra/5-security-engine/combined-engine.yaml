@@ -21,6 +21,14 @@ spec:
           value: "http://influxdb:8086"
         - name: KAFKA_BROKERS
           value: "kafka:9092"
+        - name: KAFKA_ENABLED
+          value: "true"
+        - name: KAFKA_SOURCE_TOPIC
+          value: "telemetry.enriched"
+        - name: KAFKA_SIGNAL_TOPIC
+          value: "detections.signals"
+        - name: KAFKA_GROUP_ID
+          value: "detection-engine"
         - name: SUPABASE_DB_HOST
           value: "supabase-db"
         - name: SUPABASE_DB_PORT

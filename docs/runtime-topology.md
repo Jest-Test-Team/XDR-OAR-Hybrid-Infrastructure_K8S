@@ -48,6 +48,7 @@ Current in-repo services:
 Current maturity:
 
 - ML and scanner scaffolding exists
+- `detection-engine` can now consume from Kafka and publish detection signals
 - the rule engine is still placeholder-level compared to AXIOM
 
 ### 4. Control Plane
@@ -75,6 +76,7 @@ Recommended target path:
    - Kafka event topics
    - InfluxDB telemetry storage
    - downstream detection/rule services
+6. `detection-engine` consumes enriched events and publishes detection signals
 
 ## Current Topic Model
 
@@ -123,15 +125,15 @@ This is a preparation step for real client integration and keeps the deployment 
 The following are still not implemented:
 
 - real MQTT or AMQP client connectivity in the event-plane services
-- detection-engine consumption of normalized topics
 - incident emission to a SOAR control plane
 - command/result reconciliation services
+- AXIOM-style multi-layer rule evaluation
 
 ## Recommended Next Step
 
 The next meaningful runtime step is:
 
-- wire `detection-engine` to consume normalized or enriched topics
+- upgrade `detection-engine` from threshold-style signal generation to AXIOM-style layered rules
 
 After that:
 
