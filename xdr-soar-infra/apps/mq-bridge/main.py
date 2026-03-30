@@ -11,6 +11,9 @@ HOST = "0.0.0.0"
 PORT = int(os.getenv("PORT", "8093"))
 INPUT_TOPIC = os.getenv("INPUT_TOPIC", "telemetry.raw")
 OUTPUT_TOPIC = os.getenv("OUTPUT_TOPIC", "telemetry.normalized")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "")
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "")
+MQTT_BROKER_PORT = os.getenv("MQTT_BROKER_PORT", "")
 
 
 def write_json(handler: BaseHTTPRequestHandler, payload: dict, status: int = HTTPStatus.OK) -> None:
@@ -45,6 +48,10 @@ class Handler(BaseHTTPRequestHandler):
                     "service": "mq-bridge",
                     "input_topic": INPUT_TOPIC,
                     "output_topic": OUTPUT_TOPIC,
+                    "configured_backends": {
+                        "kafka_bootstrap_servers": KAFKA_BOOTSTRAP_SERVERS or None,
+                        "mqtt_broker": f"{MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}" if MQTT_BROKER_HOST and MQTT_BROKER_PORT else None,
+                    },
                     "time": int(time.time()),
                 },
             )

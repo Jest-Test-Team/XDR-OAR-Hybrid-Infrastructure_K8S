@@ -14,6 +14,7 @@ PORT = int(os.getenv("PORT", "8094"))
 SOURCE_TOPIC = os.getenv("SOURCE_TOPIC", "telemetry.normalized")
 SINK_TOPIC = os.getenv("SINK_TOPIC", "telemetry.enriched")
 SCHEMA_VERSION = os.getenv("SCHEMA_VERSION", "1.0.0")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "")
 ALLOWED_SOURCES = {"watchdog", "agent", "sensor", "ingest_gateway", "yara", "integration", "manual"}
 ALLOWED_LAYERS = {"kernel", "user", "network", "process", "file", "identity", "cloud"}
 REQUIRED_FIELDS = (
@@ -185,6 +186,9 @@ class Handler(BaseHTTPRequestHandler):
                     "source_topic": SOURCE_TOPIC,
                     "sink_topic": SINK_TOPIC,
                     "schema_version": SCHEMA_VERSION,
+                    "configured_backends": {
+                        "kafka_bootstrap_servers": KAFKA_BOOTSTRAP_SERVERS or None,
+                    },
                     "time": int(time.time()),
                 },
             )

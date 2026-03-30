@@ -16,6 +16,13 @@
 - `config/`: deployment-time domain/TLS settings and Windows updater config examples
 - `IMAGE-PINNING.md`: verified image pin references and policy
 
+相關設計文件：
+
+- `../docs/event-schema.md`
+- `../docs/command-schema.md`
+- `../docs/messaging-contract.md`
+- `../docs/runtime-topology.md`
+
 主要防禦目標：防止 VM Escape（Hypervisor 逃逸）與 VM Hopping（橫向移動）。
 
 部署流程目前會：

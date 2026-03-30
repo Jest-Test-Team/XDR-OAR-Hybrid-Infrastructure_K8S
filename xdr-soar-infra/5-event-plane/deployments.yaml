@@ -20,7 +20,30 @@ spec:
         - name: PORT
           value: "8082"
         - name: SCHEMA_VERSION
-          value: "1.0.0"
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: SCHEMA_VERSION
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: MQTT_BROKER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQTT_BROKER_HOST
+        - name: MQTT_BROKER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQTT_BROKER_PORT
+        - name: EVENT_INGEST_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: EVENT_INGEST_PATH
         ports:
         - containerPort: 8082
         readinessProbe:
@@ -59,9 +82,30 @@ spec:
         - name: PORT
           value: "8093"
         - name: INPUT_TOPIC
-          value: "telemetry.raw"
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQ_BRIDGE_INPUT_TOPIC
         - name: OUTPUT_TOPIC
-          value: "telemetry.normalized"
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQ_BRIDGE_OUTPUT_TOPIC
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: MQTT_BROKER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQTT_BROKER_HOST
+        - name: MQTT_BROKER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQTT_BROKER_PORT
         ports:
         - containerPort: 8093
         readinessProbe:
@@ -100,11 +144,25 @@ spec:
         - name: PORT
           value: "8094"
         - name: SOURCE_TOPIC
-          value: "telemetry.normalized"
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: STREAM_PROCESSOR_SOURCE_TOPIC
         - name: SINK_TOPIC
-          value: "telemetry.enriched"
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: STREAM_PROCESSOR_SINK_TOPIC
         - name: SCHEMA_VERSION
-          value: "1.0.0"
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: SCHEMA_VERSION
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: KAFKA_BOOTSTRAP_SERVERS
         ports:
         - containerPort: 8094
         readinessProbe:

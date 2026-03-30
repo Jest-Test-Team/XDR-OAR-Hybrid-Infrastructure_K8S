@@ -104,6 +104,7 @@ apply_rendered_dir "$ROOT_DIR/4-data-layer/supabase"
 
 # 4. Security Engine (Inference servers, Rules, Scanners)
 echo "[$(date)] Applying Event Plane..."
+kubectl apply -f "$SCRIPT_DIR/../5-event-plane/00-configmap.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-event-plane/services.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-event-plane/deployments.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-event-plane/kafka-bootstrap-job.yaml"

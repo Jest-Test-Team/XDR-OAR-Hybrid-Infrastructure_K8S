@@ -12,6 +12,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 HOST = "0.0.0.0"
 PORT = int(os.getenv("PORT", "8082"))
 SCHEMA_VERSION = os.getenv("SCHEMA_VERSION", "1.0.0")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "")
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "")
+MQTT_BROKER_PORT = os.getenv("MQTT_BROKER_PORT", "")
+EVENT_INGEST_PATH = os.getenv("EVENT_INGEST_PATH", "/ingest")
 ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
 
 METRICS = {
@@ -116,6 +120,11 @@ class Handler(BaseHTTPRequestHandler):
                     "status": "ok",
                     "service": "ingest-gateway",
                     "schema_version": SCHEMA_VERSION,
+                    "configured_backends": {
+                        "kafka_bootstrap_servers": KAFKA_BOOTSTRAP_SERVERS or None,
+                        "mqtt_broker": f"{MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}" if MQTT_BROKER_HOST and MQTT_BROKER_PORT else None,
+                    },
+                    "ingest_path": EVENT_INGEST_PATH,
                     "time": int(time.time()),
                 },
             )
@@ -131,7 +140,7 @@ class Handler(BaseHTTPRequestHandler):
         write_json(self, {"error": "not found"}, HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:
-        if self.path != "/ingest":
+        if self.path != EVENT_INGEST_PATH:
             write_json(self, {"error": "not found"}, HTTPStatus.NOT_FOUND)
             return
 
