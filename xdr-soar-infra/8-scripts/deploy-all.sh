@@ -117,11 +117,15 @@ kubectl apply -f "$SCRIPT_DIR/../5-security-engine/combined-engine.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/firmware-api.yaml"
 
 # 6. Frontend UI
+echo "[$(date)] Applying Control Plane..."
+kubectl apply -f "$SCRIPT_DIR/../6-control-plane/api.yaml"
+
+# 7. Frontend UI
 echo "[$(date)] Applying Frontend UI..."
 kubectl apply -f "$SCRIPT_DIR/../6-frontend-ui/combined-frontend.yaml"
 kubectl apply -f "$(render_template "$ROOT_DIR/6-frontend-ui/ingress.yaml")"
 
-# 7. Observability
+# 8. Observability
 echo "[$(date)] Applying Observability Stack..."
 kubectl apply -f "$SCRIPT_DIR/../9-observability/"
 

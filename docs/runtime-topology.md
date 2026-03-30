@@ -56,13 +56,15 @@ Current maturity:
 Current in-repo services:
 
 - `firmware-api`
+- `soar-api`
 - static `admin-frontend`
 - static `soar-dashboard`
 
 Current maturity:
 
 - firmware delivery exists
-- incident/playbook/approval/control-plane APIs do not yet exist
+- `soar-api` can now consume `detections.incidents` and expose incident reads
+- playbook/approval/command control-plane APIs do not yet exist
 
 ## Target Event Flow
 
@@ -78,6 +80,7 @@ Recommended target path:
    - downstream detection/rule services
 6. `detection-engine` consumes enriched events and publishes detection signals
 7. high-risk signals are promoted into incident records on `detections.incidents`
+8. `soar-api` consumes `detections.incidents` and exposes `/api/v1/incidents`
 
 ## Current Topic Model
 
@@ -126,18 +129,33 @@ This is a preparation step for real client integration and keeps the deployment 
 The following are still not implemented:
 
 - real MQTT or AMQP client connectivity in the event-plane services
-- incident emission to a SOAR control plane
 - command/result reconciliation services
 - AXIOM-style multi-layer rule evaluation
+- playbook, approval, and command APIs
 
 ## Recommended Next Step
 
 The next meaningful runtime step is:
 
-- add a real incident/control-plane consumer for `detections.incidents`
+- add incident persistence schema and enrich `soar-api` beyond in-memory/cache-plus-REST behavior
 
 After that:
 
+- add playbook and approval APIs
 - upgrade `detection-engine` from threshold-style signal generation to AXIOM-style layered rules
 - add MQTT or AMQP transport support to `mq-bridge`
 - wire normalized output into the future rule engine
+
+## Progress Percentage
+
+Estimated progress by phase:
+
+- Phase 0 Contracts and topology: `100%`
+- Phase 1 Event plane transport and normalization: `85%`
+- Phase 2 Detection and incident generation: `45%`
+- Phase 3 SOAR control plane: `20%`
+- Phase 4 UI and external integrations: `10%`
+
+Estimated overall repo expansion progress:
+
+- `52%`

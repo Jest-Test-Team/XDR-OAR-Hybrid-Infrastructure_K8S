@@ -70,6 +70,20 @@ spec:
   - host: ${XDR_SOAR_API_HOST}
     http:
       paths:
+      - path: /api/v1/incidents
+        pathType: Prefix
+        backend:
+          service:
+            name: soar-api
+            port:
+              number: 8085
+      - path: /api/v1/health
+        pathType: Prefix
+        backend:
+          service:
+            name: soar-api
+            port:
+              number: 8085
       - path: /
         pathType: Prefix
         backend:

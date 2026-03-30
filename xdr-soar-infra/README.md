@@ -8,6 +8,7 @@
 - `4-data-layer/`: YAML-first data services, secrets, StatefulSets, and Supabase stack
 - `5-event-plane/`: ingest gateway, message bridge, stream normalization, and Kafka topic bootstrap
 - `5-security-engine/`: detection, retraining, Triton, and YARA manifests
+- `6-control-plane/`: early SOAR API and incident ingestion plane
 - `6-frontend-ui/`: dashboard/admin Deployments, Services, and Ingress
 - `7-windows-agents/`: Windows updater workflow
 - `8-scripts/`: deploy and validation entrypoints
@@ -33,3 +34,4 @@
 - 自動生成 `.generated/updater-config.json` 與 `.generated/windows-updater-bundle.zip`
 - 渲染 Secrets、Supabase URLs、Ingress/TLS、MQTT 與 ClusterIssuer 模板後再套用
 - 先套用事件平面，再套用偵測與安全引擎平面
+- 再套用控制平面與前端入口
