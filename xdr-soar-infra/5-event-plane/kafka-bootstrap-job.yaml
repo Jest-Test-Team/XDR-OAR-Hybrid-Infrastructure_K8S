@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: event-plane-kafka-bootstrap
+  namespace: xdr-soar
+spec:
+  template:
+    metadata:
+      labels:
+        app: event-plane-kafka-bootstrap
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: kafka-bootstrap
+        image: bitnami/kafka:3.7.0@sha256:6f14689fd0ce3445f3f61a6579d4d43c95a3d7d598395d6c640c0f7fc7eb4fd0
+        command:
+        - /bin/sh
+        - -c
+        - |
+          kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic telemetry.raw --partitions 3 --replication-factor 1
+          kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic telemetry.normalized --partitions 3 --replication-factor 1
+          kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic telemetry.enriched --partitions 3 --replication-factor 1
+          kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic detections.signals --partitions 3 --replication-factor 1
+          kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic detections.incidents --partitions 3 --replication-factor 1

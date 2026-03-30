@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-gateway
+  namespace: xdr-soar
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ingest-gateway
+  template:
+    metadata:
+      labels:
+        app: ingest-gateway
+    spec:
+      containers:
+      - name: ingest-gateway
+        image: ingest-gateway:v1.0.0
+        env:
+        - name: PORT
+          value: "8082"
+        - name: SCHEMA_VERSION
+          value: "1.0.0"
+        ports:
+        - containerPort: 8082
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mq-bridge
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mq-bridge
+  template:
+    metadata:
+      labels:
+        app: mq-bridge
+    spec:
+      containers:
+      - name: mq-bridge
+        image: mq-bridge:v1.0.0
+        env:
+        - name: PORT
+          value: "8093"
+        - name: INPUT_TOPIC
+          value: "telemetry.raw"
+        - name: OUTPUT_TOPIC
+          value: "telemetry.normalized"
+        ports:
+        - containerPort: 8093
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8093
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stream-processor
+  namespace: xdr-soar
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: stream-processor
+  template:
+    metadata:
+      labels:
+        app: stream-processor
+    spec:
+      containers:
+      - name: stream-processor
+        image: stream-processor:v1.0.0
+        env:
+        - name: PORT
+          value: "8094"
+        - name: SOURCE_TOPIC
+          value: "telemetry.normalized"
+        - name: SINK_TOPIC
+          value: "telemetry.enriched"
+        - name: SCHEMA_VERSION
+          value: "1.0.0"
+        ports:
+        - containerPort: 8094
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8094
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi

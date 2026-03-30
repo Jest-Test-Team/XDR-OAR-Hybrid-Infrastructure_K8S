@@ -52,9 +52,12 @@ if command -v python3 >/dev/null 2>&1; then
   python3 -m py_compile \
     "$ROOT_DIR/agent_main.py" \
     "$ROOT_DIR/apps/firmware-api/main.py" \
+    "$ROOT_DIR/apps/ingest-gateway/main.py" \
     "$ROOT_DIR/scripts/upload_to_gridfs.py" \
     "$ROOT_DIR/apps/detection-engine/main.py" \
     "$ROOT_DIR/apps/ml-training/main.py" \
+    "$ROOT_DIR/apps/mq-bridge/main.py" \
+    "$ROOT_DIR/apps/stream-processor/main.py" \
     "$ROOT_DIR/apps/yara-scanner/main.py"
 else
   echo "[$(date)] Skipping Python checks because python3 is not installed."
@@ -80,6 +83,7 @@ if command -v ruby >/dev/null 2>&1; then
       "$ROOT_DIR/2-kubernetes-cluster" \
       "$ROOT_DIR/3-k8s-network-policies" \
       "$ROOT_DIR/4-data-layer" \
+      "$ROOT_DIR/5-event-plane" \
       "$ROOT_DIR/5-security-engine" \
       "$ROOT_DIR/6-frontend-ui" \
       "$ROOT_DIR/9-observability" \
@@ -116,7 +120,7 @@ if rg -n 'image: .*:latest' "$ROOT_DIR" -g '*.yaml' -g '*.yml' >/dev/null; then
 fi
 
 echo "[$(date)] Checking for third-party images missing digests..."
-UNPINNED_THIRD_PARTY_IMAGES="$(rg -n 'image:\s*[^[:space:]@]+:[^[:space:]@]+$' "$ROOT_DIR" -g '*.yaml' -g '*.yml' | rg -v 'image:\s*(custom-engine|ml-training|custom-yara|admin-frontend|soar-frontend|firmware-api):' || true)"
+UNPINNED_THIRD_PARTY_IMAGES="$(rg -n 'image:\s*[^[:space:]@]+:[^[:space:]@]+$' "$ROOT_DIR" -g '*.yaml' -g '*.yml' | rg -v 'image:\s*(custom-engine|ml-training|custom-yara|admin-frontend|soar-frontend|firmware-api|ingest-gateway|mq-bridge|stream-processor):' || true)"
 if [ -n "$UNPINNED_THIRD_PARTY_IMAGES" ]; then
   echo "Found third-party Kubernetes images without immutable digests." >&2
   printf '%s\n' "$UNPINNED_THIRD_PARTY_IMAGES" >&2

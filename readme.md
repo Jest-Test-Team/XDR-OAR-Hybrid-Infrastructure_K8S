@@ -11,6 +11,7 @@
 系統分為三個主要層級，透過虛擬網路（vSwitch）與網路策略（Network Policy）進行邏輯與物理隔離：
 
   * **Endpoint Layer (Windows/macOS)**：獨立 OS 環境，運行待測 EDR Agent 與 Watchdog。
+  * **Event Plane (K8s)**：HTTP ingest、MQTT/bridge、Kafka normalizer 與 topic bootstrap。
   * **Intelligence Layer (K8s)**：運行 9 個並行 ML 模型、YARA 掃描器與規則引擎。
   * **Data Hub (Middleware)**：由 Kafka、InfluxDB、MongoDB 與 Supabase 組成的數據中樞。
 

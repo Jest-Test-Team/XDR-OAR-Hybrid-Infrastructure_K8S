@@ -103,18 +103,24 @@ kubectl apply -f "$SCRIPT_DIR/../4-data-layer/redis/deployment.yaml"
 apply_rendered_dir "$ROOT_DIR/4-data-layer/supabase"
 
 # 4. Security Engine (Inference servers, Rules, Scanners)
+echo "[$(date)] Applying Event Plane..."
+kubectl apply -f "$SCRIPT_DIR/../5-event-plane/services.yaml"
+kubectl apply -f "$SCRIPT_DIR/../5-event-plane/deployments.yaml"
+kubectl apply -f "$SCRIPT_DIR/../5-event-plane/kafka-bootstrap-job.yaml"
+
+# 5. Security Engine (Inference servers, Rules, Scanners)
 echo "[$(date)] Applying Security Engine..."
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/services.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/model-repository-pvc.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/combined-engine.yaml"
 kubectl apply -f "$SCRIPT_DIR/../5-security-engine/firmware-api.yaml"
 
-# 5. Frontend UI
+# 6. Frontend UI
 echo "[$(date)] Applying Frontend UI..."
 kubectl apply -f "$SCRIPT_DIR/../6-frontend-ui/combined-frontend.yaml"
 kubectl apply -f "$(render_template "$ROOT_DIR/6-frontend-ui/ingress.yaml")"
 
-# 6. Observability
+# 7. Observability
 echo "[$(date)] Applying Observability Stack..."
 kubectl apply -f "$SCRIPT_DIR/../9-observability/"
 
