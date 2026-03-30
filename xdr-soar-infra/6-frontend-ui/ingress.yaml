@@ -98,6 +98,20 @@ spec:
             name: soar-api
             port:
               number: 8085
+      - path: /api/v1/approvals/
+        pathType: Prefix
+        backend:
+          service:
+            name: soar-api
+            port:
+              number: 8085
+      - path: /api/v1/commands/
+        pathType: Prefix
+        backend:
+          service:
+            name: soar-api
+            port:
+              number: 8085
       - path: /api/v1/health
         pathType: Prefix
         backend:

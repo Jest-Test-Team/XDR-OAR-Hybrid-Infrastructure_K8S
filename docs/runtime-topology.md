@@ -65,7 +65,8 @@ Current maturity:
 - firmware delivery exists
 - `soar-api` can now consume `detections.incidents` and expose incident reads
 - `soar-api` now exposes minimal playbook, approval, and command APIs
-- playbook/approval/command workflows are still placeholder-level
+- `soar-api` now performs basic incident-to-playbook matching and approval/command state transitions
+- playbook/approval/command workflows are still placeholder-level overall
 
 ## Target Event Flow
 
@@ -83,6 +84,7 @@ Recommended target path:
 7. high-risk signals are promoted into incident records on `detections.incidents`
 8. `soar-api` consumes `detections.incidents` and exposes `/api/v1/incidents`
 9. `soar-api` maintains minimal `/api/v1/playbooks`, `/api/v1/commands`, and `/api/v1/approvals` resources
+10. `soar-api` performs basic playbook matching, approval decisions, and command status transitions
 
 ## Current Topic Model
 
@@ -133,7 +135,7 @@ The following are still not implemented:
 - real MQTT or AMQP client connectivity in the event-plane services
 - command/result reconciliation services
 - AXIOM-style multi-layer rule evaluation
-- real playbook execution, approval workflow, and command dispatch
+- real playbook execution, approval workflow persistence, and command dispatch
 
 ## Recommended Next Step
 
@@ -143,7 +145,7 @@ The next meaningful runtime step is:
 
 After that:
 
-- replace placeholder playbook/approval/command record APIs with real workflow execution
+- replace placeholder playbook/approval/command state handling with real workflow execution and dispatch
 - upgrade `detection-engine` from threshold-style signal generation to AXIOM-style layered rules
 - add MQTT or AMQP transport support to `mq-bridge`
 - wire normalized output into the future rule engine
@@ -155,9 +157,9 @@ Estimated progress by phase:
 - Phase 0 Contracts and topology: `100%`
 - Phase 1 Event plane transport and normalization: `85%`
 - Phase 2 Detection and incident generation: `45%`
-- Phase 3 SOAR control plane: `32%`
+- Phase 3 SOAR control plane: `42%`
 - Phase 4 UI and external integrations: `10%`
 
 Estimated overall repo expansion progress:
 
-- `56%`
+- `60%`

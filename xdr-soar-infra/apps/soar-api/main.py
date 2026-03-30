@@ -56,6 +56,9 @@ METRICS = {
     "incident_persist_failures_total": 0,
     "commands_created_total": 0,
     "approvals_created_total": 0,
+    "playbook_matches_total": 0,
+    "approval_decisions_total": 0,
+    "command_status_updates_total": 0,
 }
 
 
@@ -86,6 +89,15 @@ def render_metrics() -> str:
             "# HELP soar_api_approvals_created_total Number of approval records created.",
             "# TYPE soar_api_approvals_created_total counter",
             f"soar_api_approvals_created_total {METRICS['approvals_created_total']}",
+            "# HELP soar_api_playbook_matches_total Number of incident-to-playbook matches.",
+            "# TYPE soar_api_playbook_matches_total counter",
+            f"soar_api_playbook_matches_total {METRICS['playbook_matches_total']}",
+            "# HELP soar_api_approval_decisions_total Number of approval decisions recorded.",
+            "# TYPE soar_api_approval_decisions_total counter",
+            f"soar_api_approval_decisions_total {METRICS['approval_decisions_total']}",
+            "# HELP soar_api_command_status_updates_total Number of command status updates.",
+            "# TYPE soar_api_command_status_updates_total counter",
+            f"soar_api_command_status_updates_total {METRICS['command_status_updates_total']}",
         ]
     ) + "\n"
 
@@ -122,22 +134,44 @@ def store_limited(collection: list[dict], item: dict) -> None:
     del collection[MAX_INCIDENTS:]
 
 
-def create_command_from_incident(incident: dict) -> dict | None:
+def find_by_id(collection: list[dict], key: str, value: str) -> dict | None:
+    for item in collection:
+        if item.get(key) == value:
+            return item
+    return None
+
+
+def match_playbook(incident: dict) -> dict | None:
+    category = incident.get("category")
+    risk_score = float(incident.get("risk_score") or 0)
+    candidates = [p for p in PLAYBOOKS if p.get("enabled") and p.get("match_category") == category]
+    if not candidates and risk_score >= 85:
+        candidates = [p for p in PLAYBOOKS if p.get("enabled") and p.get("risk_level") == "R3"]
+    if not candidates:
+        return None
+    METRICS["playbook_matches_total"] += 1
+    return candidates[0]
+
+
+def create_command_from_incident(incident: dict, playbook: dict | None) -> dict | None:
+    if not playbook:
+        return None
+
     category = incident.get("category")
     device_id = incident.get("device_id")
     tenant_id = incident.get("tenant_id")
     incident_id = incident.get("incident_id")
     risk_score = float(incident.get("risk_score") or 0)
 
-    if category == "dns":
+    if playbook.get("playbook_id") == "pb-auto-block-domain" and category == "dns":
         command = {
             "command_id": str(uuid.uuid4()),
             "correlation_id": incident.get("correlation_id") or incident_id or str(uuid.uuid4()),
             "tenant_id": tenant_id,
             "device_id": device_id,
             "incident_id": incident_id,
-            "playbook_id": "pb-auto-block-domain",
-            "playbook_version": "0.1.0",
+            "playbook_id": playbook["playbook_id"],
+            "playbook_version": playbook.get("version", "0.1.0"),
             "command_type": "block.domain",
             "requires_presence": False,
             "approval_required": False,
@@ -152,15 +186,15 @@ def create_command_from_incident(incident: dict) -> dict | None:
         }
         return command
 
-    if risk_score >= 85:
+    if playbook.get("playbook_id") == "pb-isolate-host-review" and risk_score >= 85:
         command = {
             "command_id": str(uuid.uuid4()),
             "correlation_id": incident.get("correlation_id") or incident_id or str(uuid.uuid4()),
             "tenant_id": tenant_id,
             "device_id": device_id,
             "incident_id": incident_id,
-            "playbook_id": "pb-isolate-host-review",
-            "playbook_version": "0.1.0",
+            "playbook_id": playbook["playbook_id"],
+            "playbook_version": playbook.get("version", "0.1.0"),
             "command_type": "isolate.host",
             "requires_presence": True,
             "approval_required": True,
@@ -179,7 +213,12 @@ def create_command_from_incident(incident: dict) -> dict | None:
 
 
 def maybe_create_followup_records(incident: dict) -> None:
-    command = create_command_from_incident(incident)
+    playbook = match_playbook(incident)
+    if playbook is not None:
+        incident["matched_playbook_id"] = playbook["playbook_id"]
+        incident["matched_playbook_version"] = playbook.get("version", "0.1.0")
+
+    command = create_command_from_incident(incident, playbook)
     if not command:
         return
 
@@ -191,6 +230,7 @@ def maybe_create_followup_records(incident: dict) -> None:
             "approval_id": str(uuid.uuid4()),
             "command_id": command["command_id"],
             "incident_id": incident.get("incident_id"),
+            "playbook_id": command["playbook_id"],
             "risk_level": command["risk_level"],
             "status": "pending",
             "requested_at": int(time.time()),
@@ -305,12 +345,58 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        path_parts = [part for part in parsed.path.split("/") if part]
         content_length = int(self.headers.get("Content-Length", "0"))
         raw_body = self.rfile.read(content_length)
         try:
             payload = json.loads(raw_body or "{}")
         except json.JSONDecodeError:
             json_response(self, {"error": "invalid json"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        if len(path_parts) == 5 and path_parts[:3] == ["api", "v1", "approvals"] and path_parts[4] == "decision":
+            approval_id = path_parts[3]
+            approval = find_by_id(APPROVALS, "approval_id", approval_id)
+            if approval is None:
+                json_response(self, {"error": "approval not found"}, HTTPStatus.NOT_FOUND)
+                return
+
+            decision = payload.get("decision", "pending")
+            if decision not in {"approved", "rejected"}:
+                json_response(self, {"error": "decision must be approved or rejected"}, HTTPStatus.BAD_REQUEST)
+                return
+
+            approval["status"] = decision
+            approval["decided_at"] = int(time.time())
+            METRICS["approval_decisions_total"] += 1
+
+            command = find_by_id(COMMANDS, "command_id", approval.get("command_id"))
+            if command is not None:
+                command["status"] = "approved" if decision == "approved" else "rejected"
+                command["decision_at"] = int(time.time())
+                METRICS["command_status_updates_total"] += 1
+
+            json_response(self, approval)
+            return
+
+        if len(path_parts) == 5 and path_parts[:3] == ["api", "v1", "commands"] and path_parts[4] == "status":
+            command_id = path_parts[3]
+            command = find_by_id(COMMANDS, "command_id", command_id)
+            if command is None:
+                json_response(self, {"error": "command not found"}, HTTPStatus.NOT_FOUND)
+                return
+
+            status = payload.get("status")
+            if status not in {"queued", "pending_approval", "approved", "rejected", "sent", "acked", "completed", "failed", "expired"}:
+                json_response(self, {"error": "invalid command status"}, HTTPStatus.BAD_REQUEST)
+                return
+
+            command["status"] = status
+            command["updated_at"] = int(time.time())
+            if "result" in payload:
+                command["result"] = payload["result"]
+            METRICS["command_status_updates_total"] += 1
+            json_response(self, command)
             return
 
         if parsed.path == "/api/v1/playbooks":
@@ -355,6 +441,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "approval_id": payload.get("approval_id") or str(uuid.uuid4()),
                 "command_id": payload.get("command_id"),
                 "incident_id": payload.get("incident_id"),
+                "playbook_id": payload.get("playbook_id"),
                 "risk_level": payload.get("risk_level", "R1"),
                 "status": payload.get("status", "pending"),
                 "requested_at": payload.get("requested_at") or int(time.time()),

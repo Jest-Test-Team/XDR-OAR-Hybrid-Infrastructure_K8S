@@ -8,10 +8,12 @@ Current implementation status:
 - internal incident cache exists
 - optional Supabase REST persistence exists when configured
 - minimal playbook, command, and approval API surfaces exist
+- incident-to-playbook matching exists
+- approval decision and command status transition endpoints exist
 
 Current gaps:
 
 - no real playbook engine
-- no approval workflow beyond record storage
-- no command dispatcher beyond record creation
+- no approval workflow beyond in-memory state transitions
+- no command dispatcher beyond record creation and status mutation
 - no incident state machine beyond basic record ingestion
