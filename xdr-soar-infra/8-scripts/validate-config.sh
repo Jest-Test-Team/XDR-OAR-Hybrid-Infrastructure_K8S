@@ -52,7 +52,6 @@ if command -v python3 >/dev/null 2>&1; then
   python3 -m py_compile \
     "$ROOT_DIR/agent_main.py" \
     "$ROOT_DIR/apps/firmware-api/main.py" \
-    "$ROOT_DIR/apps/ingest-gateway/main.py" \
     "$ROOT_DIR/scripts/upload_to_gridfs.py" \
     "$ROOT_DIR/apps/detection-engine/main.py" \
     "$ROOT_DIR/apps/ml-training/main.py" \
@@ -61,6 +60,18 @@ if command -v python3 >/dev/null 2>&1; then
     "$ROOT_DIR/apps/yara-scanner/main.py"
 else
   echo "[$(date)] Skipping Python checks because python3 is not installed."
+fi
+
+echo "[$(date)] Validating Go app sources..."
+if command -v gofmt >/dev/null 2>&1; then
+  UNFORMATTED_GO="$(gofmt -l "$ROOT_DIR/apps/ingest-gateway/main.go" || true)"
+  if [ -n "$UNFORMATTED_GO" ]; then
+    echo "Found unformatted Go sources." >&2
+    printf '%s\n' "$UNFORMATTED_GO" >&2
+    exit 1
+  fi
+else
+  echo "[$(date)] Skipping Go formatting checks because gofmt is not installed."
 fi
 
 echo "[$(date)] Validating shell script syntax..."
