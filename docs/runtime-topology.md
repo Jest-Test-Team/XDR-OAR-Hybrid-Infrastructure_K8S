@@ -64,7 +64,8 @@ Current maturity:
 
 - firmware delivery exists
 - `soar-api` can now consume `detections.incidents` and expose incident reads
-- playbook/approval/command control-plane APIs do not yet exist
+- `soar-api` now exposes minimal playbook, approval, and command APIs
+- playbook/approval/command workflows are still placeholder-level
 
 ## Target Event Flow
 
@@ -81,6 +82,7 @@ Recommended target path:
 6. `detection-engine` consumes enriched events and publishes detection signals
 7. high-risk signals are promoted into incident records on `detections.incidents`
 8. `soar-api` consumes `detections.incidents` and exposes `/api/v1/incidents`
+9. `soar-api` maintains minimal `/api/v1/playbooks`, `/api/v1/commands`, and `/api/v1/approvals` resources
 
 ## Current Topic Model
 
@@ -131,7 +133,7 @@ The following are still not implemented:
 - real MQTT or AMQP client connectivity in the event-plane services
 - command/result reconciliation services
 - AXIOM-style multi-layer rule evaluation
-- playbook, approval, and command APIs
+- real playbook execution, approval workflow, and command dispatch
 
 ## Recommended Next Step
 
@@ -141,7 +143,7 @@ The next meaningful runtime step is:
 
 After that:
 
-- add playbook and approval APIs
+- replace placeholder playbook/approval/command record APIs with real workflow execution
 - upgrade `detection-engine` from threshold-style signal generation to AXIOM-style layered rules
 - add MQTT or AMQP transport support to `mq-bridge`
 - wire normalized output into the future rule engine
@@ -153,9 +155,9 @@ Estimated progress by phase:
 - Phase 0 Contracts and topology: `100%`
 - Phase 1 Event plane transport and normalization: `85%`
 - Phase 2 Detection and incident generation: `45%`
-- Phase 3 SOAR control plane: `20%`
+- Phase 3 SOAR control plane: `32%`
 - Phase 4 UI and external integrations: `10%`
 
 Estimated overall repo expansion progress:
 
-- `52%`
+- `56%`

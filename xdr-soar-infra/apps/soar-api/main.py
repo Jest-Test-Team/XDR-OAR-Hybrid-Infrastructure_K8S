@@ -6,8 +6,10 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
 
 try:
     from kafka import KafkaConsumer
@@ -25,11 +27,35 @@ SUPABASE_INCIDENTS_URL = os.getenv("SUPABASE_INCIDENTS_URL", "").rstrip("/")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY", "")
 
 INCIDENTS: list[dict] = []
+PLAYBOOKS: list[dict] = [
+    {
+        "playbook_id": "pb-auto-block-domain",
+        "name": "Auto Block Domain",
+        "version": "0.1.0",
+        "enabled": True,
+        "match_category": "dns",
+        "risk_level": "R1",
+        "actions": [{"type": "block.domain", "ttl": 3600}],
+    },
+    {
+        "playbook_id": "pb-isolate-host-review",
+        "name": "Isolate Host With Approval",
+        "version": "0.1.0",
+        "enabled": True,
+        "match_category": "malware_execution",
+        "risk_level": "R3",
+        "actions": [{"type": "isolate.host"}],
+    },
+]
+APPROVALS: list[dict] = []
+COMMANDS: list[dict] = []
 MAX_INCIDENTS = 500
 METRICS = {
     "incidents_consumed_total": 0,
     "incidents_persisted_total": 0,
     "incident_persist_failures_total": 0,
+    "commands_created_total": 0,
+    "approvals_created_total": 0,
 }
 
 
@@ -54,6 +80,12 @@ def render_metrics() -> str:
             "# HELP soar_api_incident_persist_failures_total Number of incident persistence failures.",
             "# TYPE soar_api_incident_persist_failures_total counter",
             f"soar_api_incident_persist_failures_total {METRICS['incident_persist_failures_total']}",
+            "# HELP soar_api_commands_created_total Number of command records created.",
+            "# TYPE soar_api_commands_created_total counter",
+            f"soar_api_commands_created_total {METRICS['commands_created_total']}",
+            "# HELP soar_api_approvals_created_total Number of approval records created.",
+            "# TYPE soar_api_approvals_created_total counter",
+            f"soar_api_approvals_created_total {METRICS['approvals_created_total']}",
         ]
     ) + "\n"
 
@@ -85,6 +117,89 @@ def store_incident(incident: dict) -> None:
     del INCIDENTS[MAX_INCIDENTS:]
 
 
+def store_limited(collection: list[dict], item: dict) -> None:
+    collection.insert(0, item)
+    del collection[MAX_INCIDENTS:]
+
+
+def create_command_from_incident(incident: dict) -> dict | None:
+    category = incident.get("category")
+    device_id = incident.get("device_id")
+    tenant_id = incident.get("tenant_id")
+    incident_id = incident.get("incident_id")
+    risk_score = float(incident.get("risk_score") or 0)
+
+    if category == "dns":
+        command = {
+            "command_id": str(uuid.uuid4()),
+            "correlation_id": incident.get("correlation_id") or incident_id or str(uuid.uuid4()),
+            "tenant_id": tenant_id,
+            "device_id": device_id,
+            "incident_id": incident_id,
+            "playbook_id": "pb-auto-block-domain",
+            "playbook_version": "0.1.0",
+            "command_type": "block.domain",
+            "requires_presence": False,
+            "approval_required": False,
+            "risk_level": "R1",
+            "payload": {
+                "domain": incident.get("signal", {}).get("payload", {}).get("query", "unknown"),
+                "ttl": 3600,
+            },
+            "issued_at": int(time.time()),
+            "status": "queued",
+            "schema_version": "1.0.0",
+        }
+        return command
+
+    if risk_score >= 85:
+        command = {
+            "command_id": str(uuid.uuid4()),
+            "correlation_id": incident.get("correlation_id") or incident_id or str(uuid.uuid4()),
+            "tenant_id": tenant_id,
+            "device_id": device_id,
+            "incident_id": incident_id,
+            "playbook_id": "pb-isolate-host-review",
+            "playbook_version": "0.1.0",
+            "command_type": "isolate.host",
+            "requires_presence": True,
+            "approval_required": True,
+            "risk_level": "R3",
+            "payload": {
+                "network_quarantine": True,
+                "allow_internal": False,
+            },
+            "issued_at": int(time.time()),
+            "status": "pending_approval",
+            "schema_version": "1.0.0",
+        }
+        return command
+
+    return None
+
+
+def maybe_create_followup_records(incident: dict) -> None:
+    command = create_command_from_incident(incident)
+    if not command:
+        return
+
+    store_limited(COMMANDS, command)
+    METRICS["commands_created_total"] += 1
+
+    if command["approval_required"]:
+        approval = {
+            "approval_id": str(uuid.uuid4()),
+            "command_id": command["command_id"],
+            "incident_id": incident.get("incident_id"),
+            "risk_level": command["risk_level"],
+            "status": "pending",
+            "requested_at": int(time.time()),
+            "schema_version": "1.0.0",
+        }
+        store_limited(APPROVALS, approval)
+        METRICS["approvals_created_total"] += 1
+
+
 def maybe_start_consumer() -> None:
     if not KAFKA_ENABLED or not KAFKA_BROKERS.strip() or KafkaConsumer is None:
         return
@@ -114,6 +229,7 @@ def kafka_worker() -> None:
                 incident = message.value if isinstance(message.value, dict) else {}
                 METRICS["incidents_consumed_total"] += 1
                 store_incident(incident)
+                maybe_create_followup_records(incident)
                 if persist_incident(incident):
                     METRICS["incidents_persisted_total"] += 1
                 elif SUPABASE_INCIDENTS_URL:
@@ -136,7 +252,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         return
 
     def do_GET(self) -> None:
-        if self.path in {"/health", "/api/v1/health"}:
+        parsed = urlparse(self.path)
+
+        if parsed.path in {"/health", "/api/v1/health"}:
             json_response(
                 self,
                 {
@@ -150,12 +268,15 @@ class RequestHandler(BaseHTTPRequestHandler):
                         "supabase_incidents_url": SUPABASE_INCIDENTS_URL or None,
                     },
                     "cached_incidents": len(INCIDENTS),
+                    "cached_playbooks": len(PLAYBOOKS),
+                    "cached_commands": len(COMMANDS),
+                    "cached_approvals": len(APPROVALS),
                     "time": int(time.time()),
                 },
             )
             return
 
-        if self.path == "/metrics":
+        if parsed.path == "/metrics":
             body = render_metrics().encode("utf-8")
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/plain; version=0.0.4")
@@ -164,8 +285,84 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
 
-        if self.path == "/api/v1/incidents":
+        if parsed.path == "/api/v1/incidents":
             json_response(self, INCIDENTS)
+            return
+
+        if parsed.path == "/api/v1/playbooks":
+            json_response(self, PLAYBOOKS)
+            return
+
+        if parsed.path == "/api/v1/commands":
+            json_response(self, COMMANDS)
+            return
+
+        if parsed.path == "/api/v1/approvals":
+            json_response(self, APPROVALS)
+            return
+
+        json_response(self, {"error": "not found"}, HTTPStatus.NOT_FOUND)
+
+    def do_POST(self) -> None:
+        parsed = urlparse(self.path)
+        content_length = int(self.headers.get("Content-Length", "0"))
+        raw_body = self.rfile.read(content_length)
+        try:
+            payload = json.loads(raw_body or "{}")
+        except json.JSONDecodeError:
+            json_response(self, {"error": "invalid json"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        if parsed.path == "/api/v1/playbooks":
+            playbook = {
+                "playbook_id": payload.get("playbook_id") or str(uuid.uuid4()),
+                "name": payload.get("name") or "Unnamed Playbook",
+                "version": payload.get("version") or "0.1.0",
+                "enabled": bool(payload.get("enabled", True)),
+                "match_category": payload.get("match_category"),
+                "risk_level": payload.get("risk_level", "R1"),
+                "actions": payload.get("actions", []),
+            }
+            store_limited(PLAYBOOKS, playbook)
+            json_response(self, playbook, HTTPStatus.CREATED)
+            return
+
+        if parsed.path == "/api/v1/commands":
+            command = {
+                "command_id": payload.get("command_id") or str(uuid.uuid4()),
+                "correlation_id": payload.get("correlation_id") or str(uuid.uuid4()),
+                "tenant_id": payload.get("tenant_id"),
+                "device_id": payload.get("device_id"),
+                "incident_id": payload.get("incident_id"),
+                "playbook_id": payload.get("playbook_id"),
+                "playbook_version": payload.get("playbook_version", "0.1.0"),
+                "command_type": payload.get("command_type"),
+                "requires_presence": bool(payload.get("requires_presence", False)),
+                "approval_required": bool(payload.get("approval_required", False)),
+                "risk_level": payload.get("risk_level", "R1"),
+                "payload": payload.get("payload", {}),
+                "issued_at": payload.get("issued_at") or int(time.time()),
+                "status": payload.get("status", "queued"),
+                "schema_version": "1.0.0",
+            }
+            store_limited(COMMANDS, command)
+            METRICS["commands_created_total"] += 1
+            json_response(self, command, HTTPStatus.CREATED)
+            return
+
+        if parsed.path == "/api/v1/approvals":
+            approval = {
+                "approval_id": payload.get("approval_id") or str(uuid.uuid4()),
+                "command_id": payload.get("command_id"),
+                "incident_id": payload.get("incident_id"),
+                "risk_level": payload.get("risk_level", "R1"),
+                "status": payload.get("status", "pending"),
+                "requested_at": payload.get("requested_at") or int(time.time()),
+                "schema_version": "1.0.0",
+            }
+            store_limited(APPROVALS, approval)
+            METRICS["approvals_created_total"] += 1
+            json_response(self, approval, HTTPStatus.CREATED)
             return
 
         json_response(self, {"error": "not found"}, HTTPStatus.NOT_FOUND)

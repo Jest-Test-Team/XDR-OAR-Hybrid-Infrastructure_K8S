@@ -552,14 +552,14 @@ Estimated completion by major area:
 - Contracts and schema alignment: `100%`
 - Event-plane scaffolding and Kafka plumbing: `85%`
 - Detection-plane Kafka integration: `50%`
-- Incident ingestion control plane: `20%`
-- Full SOAR playbooks, approvals, and commands: `5%`
+- Incident ingestion control plane: `35%`
+- Full SOAR playbooks, approvals, and commands: `15%`
 - UI and operator workflows: `10%`
 - External integrations migration: `10%`
 
 Estimated overall expansion completion:
 
-- `50%`
+- `56%`
 
 ## Bottom Line
 
