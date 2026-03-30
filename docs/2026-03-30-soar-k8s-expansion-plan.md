@@ -539,6 +539,7 @@ Current maturity:
 - mq-bridge HTTP-to-Kafka bridge path: implemented
 - stream-processor Kafka consume/publish path: implemented
 - detection-engine Kafka consume/publish path: implemented
+- detection-engine incident topic emission: implemented
 - real message-bus integration: not yet implemented
 - AXIOM rule engine migration: not yet implemented
 - Cloud Console SOAR control plane migration: not yet implemented

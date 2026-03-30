@@ -27,6 +27,8 @@ spec:
           value: "telemetry.enriched"
         - name: KAFKA_SIGNAL_TOPIC
           value: "detections.signals"
+        - name: KAFKA_INCIDENT_TOPIC
+          value: "detections.incidents"
         - name: KAFKA_GROUP_ID
           value: "detection-engine"
         - name: SUPABASE_DB_HOST

@@ -6,6 +6,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -24,6 +25,7 @@ RISK_THRESHOLD = int(os.getenv("RISK_THRESHOLD", "85"))
 KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "")
 KAFKA_SOURCE_TOPIC = os.getenv("KAFKA_SOURCE_TOPIC", "telemetry.enriched")
 KAFKA_SIGNAL_TOPIC = os.getenv("KAFKA_SIGNAL_TOPIC", "detections.signals")
+KAFKA_INCIDENT_TOPIC = os.getenv("KAFKA_INCIDENT_TOPIC", "detections.incidents")
 KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "detection-engine")
 KAFKA_ENABLED = os.getenv("KAFKA_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
 
@@ -34,6 +36,8 @@ METRICS = {
     "kafka_consumed_total": 0,
     "signals_published_total": 0,
     "signal_publish_failures_total": 0,
+    "incidents_published_total": 0,
+    "incident_publish_failures_total": 0,
 }
 
 
@@ -114,6 +118,27 @@ def evaluate_detection(telemetry: dict) -> dict:
     }
 
 
+def build_incident(result: dict) -> dict:
+    signal = result["signal"]
+    return {
+        "incident_id": str(uuid.uuid4()),
+        "correlation_id": signal.get("event_id") or str(uuid.uuid4()),
+        "tenant_id": signal.get("tenant_id"),
+        "device_id": signal.get("device_id"),
+        "title": f"{signal.get('category') or 'security'} detection on {signal.get('hostname') or 'unknown'}",
+        "summary": "Auto-generated incident from detection-engine threshold policy.",
+        "status": "open",
+        "severity": signal.get("severity", "medium"),
+        "risk_score": signal.get("risk_score", 0),
+        "layer": signal.get("layer"),
+        "category": signal.get("category"),
+        "source": "detection-engine",
+        "signal": signal,
+        "created_at": int(time.time()),
+        "schema_version": "1.0.0",
+    }
+
+
 def maybe_publish_alert(result: dict) -> dict:
     if result["risk_score"] >= RISK_THRESHOLD:
         if publish_alert(result["signal"]):
@@ -158,7 +183,10 @@ def kafka_worker() -> None:
                 key_serializer=lambda value: value.encode("utf-8") if value else None,
             )
             print(
-                f"detection-engine: consuming from {KAFKA_SOURCE_TOPIC} and publishing to {KAFKA_SIGNAL_TOPIC}",
+                (
+                    f"detection-engine: consuming from {KAFKA_SOURCE_TOPIC} and publishing to "
+                    f"{KAFKA_SIGNAL_TOPIC} / {KAFKA_INCIDENT_TOPIC}"
+                ),
                 flush=True,
             )
 
@@ -179,6 +207,14 @@ def kafka_worker() -> None:
                     METRICS["signals_published_total"] += 1
                 except Exception:
                     METRICS["signal_publish_failures_total"] += 1
+
+                if result["risk_score"] >= RISK_THRESHOLD:
+                    incident = build_incident(result)
+                    try:
+                        producer.send(KAFKA_INCIDENT_TOPIC, key=incident["incident_id"], value=incident).get(timeout=5)
+                        METRICS["incidents_published_total"] += 1
+                    except Exception:
+                        METRICS["incident_publish_failures_total"] += 1
         except Exception as exc:
             print(f"detection-engine: kafka worker error: {exc}", flush=True)
             time.sleep(5)
@@ -216,6 +252,12 @@ def render_metrics() -> str:
             "# HELP detection_engine_signal_publish_failures_total Number of failed signal publications.",
             "# TYPE detection_engine_signal_publish_failures_total counter",
             f"detection_engine_signal_publish_failures_total {METRICS['signal_publish_failures_total']}",
+            "# HELP detection_engine_incidents_published_total Number of incidents published.",
+            "# TYPE detection_engine_incidents_published_total counter",
+            f"detection_engine_incidents_published_total {METRICS['incidents_published_total']}",
+            "# HELP detection_engine_incident_publish_failures_total Number of failed incident publications.",
+            "# TYPE detection_engine_incident_publish_failures_total counter",
+            f"detection_engine_incident_publish_failures_total {METRICS['incident_publish_failures_total']}",
         ]
     ) + "\n"
 
@@ -238,6 +280,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                         "kafka_brokers": KAFKA_BROKERS or None,
                         "kafka_source_topic": KAFKA_SOURCE_TOPIC,
                         "kafka_signal_topic": KAFKA_SIGNAL_TOPIC,
+                        "kafka_incident_topic": KAFKA_INCIDENT_TOPIC,
                         "kafka_group_id": KAFKA_GROUP_ID,
                         "kafka_enabled": KAFKA_ENABLED,
                     },

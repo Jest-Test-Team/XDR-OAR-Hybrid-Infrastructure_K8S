@@ -37,4 +37,4 @@ The implementation target is the richer ingest and stream-processing model docum
 
 Current downstream integration:
 
-- `detection-engine` is now configured to consume `telemetry.enriched` and publish `detections.signals`
+- `detection-engine` is now configured to consume `telemetry.enriched` and publish `detections.signals` plus `detections.incidents`

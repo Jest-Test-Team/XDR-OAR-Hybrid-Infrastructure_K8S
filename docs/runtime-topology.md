@@ -48,7 +48,7 @@ Current in-repo services:
 Current maturity:
 
 - ML and scanner scaffolding exists
-- `detection-engine` can now consume from Kafka and publish detection signals
+- `detection-engine` can now consume from Kafka and publish detection signals and incident records
 - the rule engine is still placeholder-level compared to AXIOM
 
 ### 4. Control Plane
@@ -77,6 +77,7 @@ Recommended target path:
    - InfluxDB telemetry storage
    - downstream detection/rule services
 6. `detection-engine` consumes enriched events and publishes detection signals
+7. high-risk signals are promoted into incident records on `detections.incidents`
 
 ## Current Topic Model
 
@@ -133,9 +134,10 @@ The following are still not implemented:
 
 The next meaningful runtime step is:
 
-- upgrade `detection-engine` from threshold-style signal generation to AXIOM-style layered rules
+- add a real incident/control-plane consumer for `detections.incidents`
 
 After that:
 
+- upgrade `detection-engine` from threshold-style signal generation to AXIOM-style layered rules
 - add MQTT or AMQP transport support to `mq-bridge`
 - wire normalized output into the future rule engine
