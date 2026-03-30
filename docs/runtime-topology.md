@@ -31,9 +31,9 @@ Current maturity:
 
 - contracts and deployment wiring exist
 - `ingest-gateway` has a Kafka producer path
+- `mq-bridge` has an HTTP-to-Kafka bridge path
 - `stream-processor` has a Kafka consume/publish path
 - partial normalization and schema-QA logic exists
-- `mq-bridge` still lacks a real transport client
 - real MQTT/AMQP client integration is not yet implemented
 
 ### 3. Detection Plane
@@ -131,9 +131,9 @@ The following are still not implemented:
 
 The next meaningful runtime step is:
 
-- implement transport logic in `mq-bridge`
+- wire `detection-engine` to consume normalized or enriched topics
 
 After that:
 
-- wire `detection-engine` to consume normalized or enriched topics
+- add MQTT or AMQP transport support to `mq-bridge`
 - wire normalized output into the future rule engine
