@@ -12,15 +12,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 try:
-    from kafka import KafkaConsumer
+    from kafka import KafkaConsumer, KafkaProducer
 except ImportError:  # pragma: no cover
     KafkaConsumer = None
+    KafkaProducer = None
 
 
 HOST = "0.0.0.0"
 PORT = int(os.getenv("PORT", "8085"))
 KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "")
 KAFKA_INCIDENT_TOPIC = os.getenv("KAFKA_INCIDENT_TOPIC", "detections.incidents")
+KAFKA_COMMAND_TOPIC = os.getenv("KAFKA_COMMAND_TOPIC", "commands.issue")
 KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "soar-api")
 KAFKA_ENABLED = os.getenv("KAFKA_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
 SUPABASE_INCIDENTS_URL = os.getenv("SUPABASE_INCIDENTS_URL", "").rstrip("/")
@@ -298,6 +300,38 @@ def maybe_start_consumer() -> None:
     worker.start()
 
 
+def publish_command(command: dict) -> bool:
+    if not KAFKA_ENABLED or not KAFKA_BROKERS.strip() or KafkaProducer is None:
+        return False
+
+    brokers = [item.strip() for item in KAFKA_BROKERS.split(",") if item.strip()]
+    if not brokers:
+        return False
+
+    producer = None
+    try:
+        producer = KafkaProducer(
+            bootstrap_servers=brokers,
+            value_serializer=lambda value: json.dumps(value).encode("utf-8"),
+            key_serializer=lambda value: value.encode("utf-8") if value else None,
+        )
+        key = command.get("command_id") or command.get("device_id") or "unknown"
+        producer.send(KAFKA_COMMAND_TOPIC, key=key, value=command).get(timeout=5)
+        append_audit("command_published", {
+            "command_id": command.get("command_id"),
+            "topic": KAFKA_COMMAND_TOPIC,
+        })
+        return True
+    except Exception:
+        return False
+    finally:
+        if producer is not None:
+            try:
+                producer.close()
+            except Exception:
+                pass
+
+
 def kafka_worker() -> None:
     brokers = [item.strip() for item in KAFKA_BROKERS.split(",") if item.strip()]
     if not brokers:
@@ -359,6 +393,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "configured_backends": {
                         "kafka_brokers": KAFKA_BROKERS or None,
                         "kafka_incident_topic": KAFKA_INCIDENT_TOPIC,
+                        "kafka_command_topic": KAFKA_COMMAND_TOPIC,
                         "kafka_group_id": KAFKA_GROUP_ID,
                         "kafka_enabled": KAFKA_ENABLED,
                         "supabase_incidents_url": SUPABASE_INCIDENTS_URL or None,
@@ -452,6 +487,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "command_id": command["command_id"],
                     "status": command["status"],
                 })
+                if decision == "approved":
+                    publish_command(command)
 
             json_response(self, approval)
             return
@@ -528,6 +565,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "command_id": command["command_id"],
                 "status": command["status"],
             })
+            if not command["approval_required"] and command["status"] in {"queued", "approved"}:
+                publish_command(command)
             json_response(self, command, HTTPStatus.CREATED)
             return
 

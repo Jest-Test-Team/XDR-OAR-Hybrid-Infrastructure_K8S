@@ -57,6 +57,7 @@ Current in-repo services:
 
 - `firmware-api`
 - `soar-api`
+- `command-dispatcher`
 - static `admin-frontend`
 - static `soar-dashboard`
 
@@ -67,6 +68,7 @@ Current maturity:
 - `soar-api` now exposes minimal playbook, approval, and command APIs
 - `soar-api` now performs basic incident-to-playbook matching and approval/command state transitions
 - `soar-api` now exposes audit records and optional persistence targets for core control-plane objects
+- `command-dispatcher` now consumes `commands.issue` and emits `commands.lifecycle`
 - playbook/approval/command workflows are still placeholder-level overall
 
 ## Target Event Flow
@@ -87,6 +89,7 @@ Recommended target path:
 9. `soar-api` maintains minimal `/api/v1/playbooks`, `/api/v1/commands`, and `/api/v1/approvals` resources
 10. `soar-api` performs basic playbook matching, approval decisions, and command status transitions
 11. `soar-api` records audit events and can persist incidents/playbooks/commands/approvals/audit logs via Supabase REST
+12. `command-dispatcher` consumes approved/queued commands and emits lifecycle records for dispatch
 
 ## Current Topic Model
 
@@ -135,15 +138,15 @@ This is a preparation step for real client integration and keeps the deployment 
 The following are still not implemented:
 
 - real MQTT or AMQP client connectivity in the event-plane services
-- command/result reconciliation services
+- command ACK/result reconciliation services
 - AXIOM-style multi-layer rule evaluation
-- real playbook execution, approval workflow persistence, and command dispatch
+- real playbook execution and durable workflow orchestration
 
 ## Recommended Next Step
 
 The next meaningful runtime step is:
 
-- add incident persistence schema and enrich `soar-api` beyond in-memory/cache-plus-REST behavior
+- add command ACK/result ingestion and reconciliation on top of `commands.lifecycle`
 
 After that:
 
@@ -159,9 +162,9 @@ Estimated progress by phase:
 - Phase 0 Contracts and topology: `100%`
 - Phase 1 Event plane transport and normalization: `85%`
 - Phase 2 Detection and incident generation: `45%`
-- Phase 3 SOAR control plane: `50%`
+- Phase 3 SOAR control plane: `58%`
 - Phase 4 UI and external integrations: `10%`
 
 Estimated overall repo expansion progress:
 
-- `63%`
+- `66%`

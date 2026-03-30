@@ -238,6 +238,7 @@ Recommended topics:
 - `telemetry.enriched`
 - `detections.signals`
 - `detections.incidents`
+- `commands.issue`
 - `commands.lifecycle`
 
 ## Approval And Presence Semantics

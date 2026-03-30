@@ -119,6 +119,7 @@ kubectl apply -f "$SCRIPT_DIR/../5-security-engine/firmware-api.yaml"
 # 6. Frontend UI
 echo "[$(date)] Applying Control Plane..."
 kubectl apply -f "$SCRIPT_DIR/../6-control-plane/api.yaml"
+kubectl apply -f "$SCRIPT_DIR/../6-control-plane/dispatcher.yaml"
 
 # 7. Frontend UI
 echo "[$(date)] Applying Frontend UI..."
