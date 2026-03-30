@@ -542,6 +542,7 @@ Current maturity:
 - detection-engine incident topic emission: implemented
 - soar-api incident consumer/API: implemented
 - soar-api basic playbook/approval/command workflow transitions: implemented
+- soar-api audit logging and optional multi-entity persistence: implemented
 - real message-bus integration: not yet implemented
 - AXIOM rule engine migration: not yet implemented
 - Cloud Console SOAR control plane migration: not yet implemented
@@ -553,14 +554,14 @@ Estimated completion by major area:
 - Contracts and schema alignment: `100%`
 - Event-plane scaffolding and Kafka plumbing: `85%`
 - Detection-plane Kafka integration: `50%`
-- Incident ingestion control plane: `45%`
-- Full SOAR playbooks, approvals, and commands: `25%`
+- Incident ingestion control plane: `55%`
+- Full SOAR playbooks, approvals, and commands: `30%`
 - UI and operator workflows: `10%`
 - External integrations migration: `10%`
 
 Estimated overall expansion completion:
 
-- `60%`
+- `63%`
 
 ## Bottom Line
 

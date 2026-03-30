@@ -66,6 +66,7 @@ Current maturity:
 - `soar-api` can now consume `detections.incidents` and expose incident reads
 - `soar-api` now exposes minimal playbook, approval, and command APIs
 - `soar-api` now performs basic incident-to-playbook matching and approval/command state transitions
+- `soar-api` now exposes audit records and optional persistence targets for core control-plane objects
 - playbook/approval/command workflows are still placeholder-level overall
 
 ## Target Event Flow
@@ -85,6 +86,7 @@ Recommended target path:
 8. `soar-api` consumes `detections.incidents` and exposes `/api/v1/incidents`
 9. `soar-api` maintains minimal `/api/v1/playbooks`, `/api/v1/commands`, and `/api/v1/approvals` resources
 10. `soar-api` performs basic playbook matching, approval decisions, and command status transitions
+11. `soar-api` records audit events and can persist incidents/playbooks/commands/approvals/audit logs via Supabase REST
 
 ## Current Topic Model
 
@@ -157,9 +159,9 @@ Estimated progress by phase:
 - Phase 0 Contracts and topology: `100%`
 - Phase 1 Event plane transport and normalization: `85%`
 - Phase 2 Detection and incident generation: `45%`
-- Phase 3 SOAR control plane: `42%`
+- Phase 3 SOAR control plane: `50%`
 - Phase 4 UI and external integrations: `10%`
 
 Estimated overall repo expansion progress:
 
-- `60%`
+- `63%`

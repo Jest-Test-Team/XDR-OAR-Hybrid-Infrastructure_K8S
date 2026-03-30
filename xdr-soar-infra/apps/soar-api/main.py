@@ -24,6 +24,10 @@ KAFKA_INCIDENT_TOPIC = os.getenv("KAFKA_INCIDENT_TOPIC", "detections.incidents")
 KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "soar-api")
 KAFKA_ENABLED = os.getenv("KAFKA_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
 SUPABASE_INCIDENTS_URL = os.getenv("SUPABASE_INCIDENTS_URL", "").rstrip("/")
+SUPABASE_PLAYBOOKS_URL = os.getenv("SUPABASE_PLAYBOOKS_URL", "").rstrip("/")
+SUPABASE_COMMANDS_URL = os.getenv("SUPABASE_COMMANDS_URL", "").rstrip("/")
+SUPABASE_APPROVALS_URL = os.getenv("SUPABASE_APPROVALS_URL", "").rstrip("/")
+SUPABASE_AUDIT_URL = os.getenv("SUPABASE_AUDIT_URL", "").rstrip("/")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY", "")
 
 INCIDENTS: list[dict] = []
@@ -49,6 +53,7 @@ PLAYBOOKS: list[dict] = [
 ]
 APPROVALS: list[dict] = []
 COMMANDS: list[dict] = []
+AUDIT_LOGS: list[dict] = []
 MAX_INCIDENTS = 500
 METRICS = {
     "incidents_consumed_total": 0,
@@ -59,6 +64,8 @@ METRICS = {
     "playbook_matches_total": 0,
     "approval_decisions_total": 0,
     "command_status_updates_total": 0,
+    "audit_events_total": 0,
+    "audit_persist_failures_total": 0,
 }
 
 
@@ -98,17 +105,23 @@ def render_metrics() -> str:
             "# HELP soar_api_command_status_updates_total Number of command status updates.",
             "# TYPE soar_api_command_status_updates_total counter",
             f"soar_api_command_status_updates_total {METRICS['command_status_updates_total']}",
+            "# HELP soar_api_audit_events_total Number of audit events recorded.",
+            "# TYPE soar_api_audit_events_total counter",
+            f"soar_api_audit_events_total {METRICS['audit_events_total']}",
+            "# HELP soar_api_audit_persist_failures_total Number of audit persistence failures.",
+            "# TYPE soar_api_audit_persist_failures_total counter",
+            f"soar_api_audit_persist_failures_total {METRICS['audit_persist_failures_total']}",
         ]
     ) + "\n"
 
 
-def persist_incident(incident: dict) -> bool:
-    if not SUPABASE_INCIDENTS_URL:
+def persist_record(url: str, payload: dict) -> bool:
+    if not url:
         return False
 
     request = urllib.request.Request(
-        SUPABASE_INCIDENTS_URL,
-        data=json.dumps(incident).encode("utf-8"),
+        url,
+        data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
             "apikey": SUPABASE_API_KEY,
@@ -124,6 +137,10 @@ def persist_incident(incident: dict) -> bool:
         return False
 
 
+def persist_incident(incident: dict) -> bool:
+    return persist_record(SUPABASE_INCIDENTS_URL, incident)
+
+
 def store_incident(incident: dict) -> None:
     INCIDENTS.insert(0, incident)
     del INCIDENTS[MAX_INCIDENTS:]
@@ -132,6 +149,20 @@ def store_incident(incident: dict) -> None:
 def store_limited(collection: list[dict], item: dict) -> None:
     collection.insert(0, item)
     del collection[MAX_INCIDENTS:]
+
+
+def append_audit(event_type: str, payload: dict) -> None:
+    entry = {
+        "audit_id": str(uuid.uuid4()),
+        "event_type": event_type,
+        "payload": payload,
+        "created_at": int(time.time()),
+        "schema_version": "1.0.0",
+    }
+    store_limited(AUDIT_LOGS, entry)
+    METRICS["audit_events_total"] += 1
+    if SUPABASE_AUDIT_URL and not persist_record(SUPABASE_AUDIT_URL, entry):
+        METRICS["audit_persist_failures_total"] += 1
 
 
 def find_by_id(collection: list[dict], key: str, value: str) -> dict | None:
@@ -217,6 +248,10 @@ def maybe_create_followup_records(incident: dict) -> None:
     if playbook is not None:
         incident["matched_playbook_id"] = playbook["playbook_id"]
         incident["matched_playbook_version"] = playbook.get("version", "0.1.0")
+        append_audit("playbook_matched", {
+            "incident_id": incident.get("incident_id"),
+            "playbook_id": playbook["playbook_id"],
+        })
 
     command = create_command_from_incident(incident, playbook)
     if not command:
@@ -224,6 +259,14 @@ def maybe_create_followup_records(incident: dict) -> None:
 
     store_limited(COMMANDS, command)
     METRICS["commands_created_total"] += 1
+    if SUPABASE_COMMANDS_URL:
+        persist_record(SUPABASE_COMMANDS_URL, command)
+    append_audit("command_created", {
+        "command_id": command["command_id"],
+        "incident_id": command.get("incident_id"),
+        "playbook_id": command.get("playbook_id"),
+        "status": command.get("status"),
+    })
 
     if command["approval_required"]:
         approval = {
@@ -238,6 +281,14 @@ def maybe_create_followup_records(incident: dict) -> None:
         }
         store_limited(APPROVALS, approval)
         METRICS["approvals_created_total"] += 1
+        if SUPABASE_APPROVALS_URL:
+            persist_record(SUPABASE_APPROVALS_URL, approval)
+        append_audit("approval_created", {
+            "approval_id": approval["approval_id"],
+            "command_id": approval["command_id"],
+            "incident_id": approval.get("incident_id"),
+            "status": approval.get("status"),
+        })
 
 
 def maybe_start_consumer() -> None:
@@ -269,6 +320,11 @@ def kafka_worker() -> None:
                 incident = message.value if isinstance(message.value, dict) else {}
                 METRICS["incidents_consumed_total"] += 1
                 store_incident(incident)
+                append_audit("incident_consumed", {
+                    "incident_id": incident.get("incident_id"),
+                    "device_id": incident.get("device_id"),
+                    "risk_score": incident.get("risk_score"),
+                })
                 maybe_create_followup_records(incident)
                 if persist_incident(incident):
                     METRICS["incidents_persisted_total"] += 1
@@ -306,11 +362,16 @@ class RequestHandler(BaseHTTPRequestHandler):
                         "kafka_group_id": KAFKA_GROUP_ID,
                         "kafka_enabled": KAFKA_ENABLED,
                         "supabase_incidents_url": SUPABASE_INCIDENTS_URL or None,
+                        "supabase_playbooks_url": SUPABASE_PLAYBOOKS_URL or None,
+                        "supabase_commands_url": SUPABASE_COMMANDS_URL or None,
+                        "supabase_approvals_url": SUPABASE_APPROVALS_URL or None,
+                        "supabase_audit_url": SUPABASE_AUDIT_URL or None,
                     },
                     "cached_incidents": len(INCIDENTS),
                     "cached_playbooks": len(PLAYBOOKS),
                     "cached_commands": len(COMMANDS),
                     "cached_approvals": len(APPROVALS),
+                    "cached_audit_logs": len(AUDIT_LOGS),
                     "time": int(time.time()),
                 },
             )
@@ -341,6 +402,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             json_response(self, APPROVALS)
             return
 
+        if parsed.path == "/api/v1/audit":
+            json_response(self, AUDIT_LOGS)
+            return
+
         json_response(self, {"error": "not found"}, HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:
@@ -369,12 +434,24 @@ class RequestHandler(BaseHTTPRequestHandler):
             approval["status"] = decision
             approval["decided_at"] = int(time.time())
             METRICS["approval_decisions_total"] += 1
+            if SUPABASE_APPROVALS_URL:
+                persist_record(SUPABASE_APPROVALS_URL, approval)
+            append_audit("approval_decision", {
+                "approval_id": approval["approval_id"],
+                "decision": decision,
+            })
 
             command = find_by_id(COMMANDS, "command_id", approval.get("command_id"))
             if command is not None:
                 command["status"] = "approved" if decision == "approved" else "rejected"
                 command["decision_at"] = int(time.time())
                 METRICS["command_status_updates_total"] += 1
+                if SUPABASE_COMMANDS_URL:
+                    persist_record(SUPABASE_COMMANDS_URL, command)
+                append_audit("command_decision_state_updated", {
+                    "command_id": command["command_id"],
+                    "status": command["status"],
+                })
 
             json_response(self, approval)
             return
@@ -396,6 +473,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             if "result" in payload:
                 command["result"] = payload["result"]
             METRICS["command_status_updates_total"] += 1
+            if SUPABASE_COMMANDS_URL:
+                persist_record(SUPABASE_COMMANDS_URL, command)
+            append_audit("command_status_updated", {
+                "command_id": command["command_id"],
+                "status": command["status"],
+            })
             json_response(self, command)
             return
 
@@ -410,6 +493,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "actions": payload.get("actions", []),
             }
             store_limited(PLAYBOOKS, playbook)
+            if SUPABASE_PLAYBOOKS_URL:
+                persist_record(SUPABASE_PLAYBOOKS_URL, playbook)
+            append_audit("playbook_created", {
+                "playbook_id": playbook["playbook_id"],
+                "version": playbook["version"],
+            })
             json_response(self, playbook, HTTPStatus.CREATED)
             return
 
@@ -433,6 +522,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             }
             store_limited(COMMANDS, command)
             METRICS["commands_created_total"] += 1
+            if SUPABASE_COMMANDS_URL:
+                persist_record(SUPABASE_COMMANDS_URL, command)
+            append_audit("command_created_manual", {
+                "command_id": command["command_id"],
+                "status": command["status"],
+            })
             json_response(self, command, HTTPStatus.CREATED)
             return
 
@@ -449,6 +544,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             }
             store_limited(APPROVALS, approval)
             METRICS["approvals_created_total"] += 1
+            if SUPABASE_APPROVALS_URL:
+                persist_record(SUPABASE_APPROVALS_URL, approval)
+            append_audit("approval_created_manual", {
+                "approval_id": approval["approval_id"],
+                "status": approval["status"],
+            })
             json_response(self, approval, HTTPStatus.CREATED)
             return
 

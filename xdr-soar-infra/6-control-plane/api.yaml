@@ -29,6 +29,14 @@ spec:
           value: "soar-api"
         - name: SUPABASE_INCIDENTS_URL
           value: "http://supabase/rest/v1/incidents"
+        - name: SUPABASE_PLAYBOOKS_URL
+          value: "http://supabase/rest/v1/playbooks"
+        - name: SUPABASE_COMMANDS_URL
+          value: "http://supabase/rest/v1/commands"
+        - name: SUPABASE_APPROVALS_URL
+          value: "http://supabase/rest/v1/approvals"
+        - name: SUPABASE_AUDIT_URL
+          value: "http://supabase/rest/v1/audit_logs"
         - name: SUPABASE_API_KEY
           valueFrom:
             secretKeyRef:

@@ -10,6 +10,8 @@ Current implementation status:
 - minimal playbook, command, and approval API surfaces exist
 - incident-to-playbook matching exists
 - approval decision and command status transition endpoints exist
+- audit log surface exists
+- optional persistence targets now cover incidents, playbooks, commands, approvals, and audit logs
 
 Current gaps:
 
