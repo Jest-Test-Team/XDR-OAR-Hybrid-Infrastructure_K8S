@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: influxdb
-        image: influxdb:2.7.5
+        image: influxdb:2.7.5@sha256:766904dcef641fa1491750b7b3e0dd948b30417f7ef0ac4d3f1d6ffed52a1fa2
         env:
         - name: DOCKER_INFLUXDB_INIT_MODE
           value: setup

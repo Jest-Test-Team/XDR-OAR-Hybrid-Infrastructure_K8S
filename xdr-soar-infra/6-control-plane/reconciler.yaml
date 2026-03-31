@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: command-reconciler
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: command-reconciler
+  template:
+    metadata:
+      labels:
+        app: command-reconciler
+    spec:
+      containers:
+      - name: command-reconciler
+        image: command-reconciler:v1.0.0
+        env:
+        - name: PORT
+          value: "8087"
+        - name: KAFKA_ENABLED
+          value: "true"
+        - name: KAFKA_BROKERS
+          value: "kafka:9092"
+        - name: KAFKA_LIFECYCLE_TOPIC
+          value: "commands.lifecycle"
+        - name: KAFKA_GROUP_ID
+          value: "command-reconciler"
+        ports:
+        - containerPort: 8087
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8087
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: command-reconciler
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 8087
+    targetPort: 8087
+  selector:
+    app: command-reconciler

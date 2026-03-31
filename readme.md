@@ -11,7 +11,9 @@
 系統分為三個主要層級，透過虛擬網路（vSwitch）與網路策略（Network Policy）進行邏輯與物理隔離：
 
   * **Endpoint Layer (Windows/macOS)**：獨立 OS 環境，運行待測 EDR Agent 與 Watchdog。
+  * **Event Plane (K8s)**：HTTP ingest、MQTT/bridge、Kafka normalizer 與 topic bootstrap。
   * **Intelligence Layer (K8s)**：運行 9 個並行 ML 模型、YARA 掃描器與規則引擎。
+  * **Control Plane (K8s)**：SOAR API、Incident ingestion 與後續 playbook/approval 擴充入口。
   * **Data Hub (Middleware)**：由 Kafka、InfluxDB、MongoDB 與 Supabase 組成的數據中樞。
 
 -----
@@ -43,13 +45,13 @@
 | 類別 | 組件 | 技術棧 | 職責 |
 | :--- | :--- | :--- | :--- |
 | **數據存儲** | 時序資料庫 | InfluxDB 2.7 | 儲存從 Agent 回傳的高頻 Risk Scores。 |
-| | 關聯資料庫 | Supabase (PG) | 儲存警報、設備資產與用戶操作日誌。 |
+| | 關聯資料平台 | Supabase Stack | 由 Postgres, GoTrue, PostgREST, Studio 與 API Gateway 組成。 |
 | | 文件存儲 | MongoDB 6.0 | 以 GridFS 儲存 `.pt` 模型與 Agent 韌體。 |
 | **消息中心** | MQTT Broker | EMQX 5.0 | Agent 遙測數據接入與反向更新指令發送。 |
 | | 數據匯流排 | Kafka | 高併發日誌削峰填谷，供偵測引擎消費。 |
 | **偵測引擎** | ML 推論伺服器 | NVIDIA Triton | 並行運行 9 個不同維度的 ML 偵測模型。 |
 | | 特徵掃描 | YARA Instance | 針對可疑二進位檔進行靜態特徵匹配。 |
-| **監控系統** | 可觀測性 | Grafana 三件套 | 目標架構包含 Prometheus (指標)、Loki (日誌)、Grafana (面板)；目前尚未在 repo 內實作。 |
+| **監控系統** | 可觀測性 | Grafana 三件套 | Prometheus (指標)、Loki (日誌)、Grafana (面板) 已在 `xdr-soar-infra/9-observability/` 內提供 manifests。 |
 
 -----
 
@@ -100,27 +102,32 @@ bash deploy-all.sh
 
 -----
 
-## 6\. 目前實作狀態 (Implemented Today - 2026-03-26)
+## 6\. 目前實作狀態 (Implemented Today - 2026-03-27)
 
 目前 repo 的 ownership model 為：
 
 1.  **Terraform 僅管理 VMware 網路邊界**：`xdr-soar-infra/1-vmware-esxi/` 現在是單一 Terraform root，包含 version pinning、variables、outputs 與 example tfvars。
-2.  **Kubernetes 採 YAML-first**：Data Layer、Security Engine、Frontend 與 NetworkPolicy 由 `kubectl apply` + shell script 管理。
+2.  **Kubernetes 採 YAML-first**：Data Layer、Security Engine、Frontend、Observability 與 NetworkPolicy 由 `kubectl apply` + shell script 管理。
 3.  **Cilium 以 Helm 安裝**：使用 `xdr-soar-infra/2-kubernetes-cluster/install-cilium.sh` 渲染 `cilium-values.yaml` 後安裝。
 
 本 repo 已完成以下改良：
 
 1.  **冪等部署**：`deploy-all.sh` 改為以腳本所在目錄為基準，並使用 `kubectl apply` 套用 Namespace、Secrets、Services、StatefulSets 與前端 Ingress。
-2.  **狀態服務基礎強化**：MongoDB、Kafka、InfluxDB 已具備 PVC、固定 Service、基本 probes 與初始化環境變數。
-3.  **資料層憑證外提**：內嵌於 manifest 的 DB 密碼已移至 `4-data-layer/00-secrets.yaml`。
-4.  **NetPol 收斂**：移除全域寬鬆 egress 規則，改為 workload-specific egress/ingress。
-5.  **Windows 更新流程改善**：Updater 已加入 payload 驗證、SHA-256 比對、備份與實際 binary replacement。
+2.  **狀態服務基礎強化**：MongoDB、Kafka、InfluxDB 與 Supabase Postgres 已具備 PVC、固定 Service、基本 probes 與初始化環境變數。
+3.  **資料層與 Supabase 擴展**：`4-data-layer/supabase/` 現在包含 Postgres, GoTrue, PostgREST, Postgres Meta, Studio 與 Gateway manifests。
+4.  **NetPol 收斂**：移除全域寬鬆 egress 規則，改為 workload-specific egress/ingress，並覆蓋 public web routes 與 observability。
+5.  **可觀測性落地**：`9-observability/` 新增 Prometheus, Loki, Promtail, Grafana。
+6.  **自研鏡像來源補齊**：`xdr-soar-infra/apps/` 提供 detection-engine, ml-training, yara-scanner, admin-frontend, soar-dashboard 的 build context 與 Dockerfile。
+7.  **Firmware API 落地**：`xdr-soar-infra/apps/firmware-api/` 與對應 K8s manifests 現在提供 `/v1/firmware/<version>` 下載端點，直接從 MongoDB GridFS 讀取 agent binary。
+8.  **Windows 更新流程改善**：Updater 已改為讀取外部 JSON / 環境變數設定，強制要求真實 MQTT 帳密、Broker 憑證 thumbprint 與 firmware API URL。
+9.  **映像版本治理**：所有第三方 K8s 映像都已改為明確版本加 digest，`validate-config.sh` 會拒絕新的 `:latest` 或 tag-only 第三方映像。
+10. **部署參數自動化**：若 `xdr-soar-infra/config/platform.env` 不存在，`bootstrap-platform-config.sh` 會自動產生可用的 bootstrap 設定，包含 base domain、MQTT NodePort 與更新 API URL。
+11. **TLS 自動選擇**：預設 `XDR_SOAR_TLS_MODE=auto`，若叢集已有 cert-manager CRDs 就自動使用 ClusterIssuer，否則回退到 repo 生成的自簽 CA / TLS 憑證。
+12. **MQTT Broker 真正可用**：EMQX 現在會載入內建認證資料庫 bootstrap 檔與 TLS 憑證，並透過外部 Service 暴露 TLS listener 給 Windows updater。
+13. **Updater 交付自動化**：`package-windows-updater-bundle.sh` 會自動產生 `.generated/windows-updater-bundle.zip`，內含 updater script、install script、config JSON 與 CA 憑證；GitLab CI 也會輸出相同 bundle artifact。
+14. **Terraform 驗證補齊**：`validate-config.sh` 現在會使用本機 Terraform 或 Dockerized Terraform，GitLab CI 也有獨立 `validate_terraform` job。
 
-仍然尚未在 repo 中實作的部分：
-
-1.  Grafana / Loki / Prometheus
-2.  自研引擎與前端的實際 source code / Docker build context
-3.  完整的 Supabase stack
+現在 repo 層面已沒有待補的基礎設施 TODO；剩下的只是不影響 repo 完整性的正式營運政策，例如是否在上線後輪替 bootstrap secrets。
 
 -----
 

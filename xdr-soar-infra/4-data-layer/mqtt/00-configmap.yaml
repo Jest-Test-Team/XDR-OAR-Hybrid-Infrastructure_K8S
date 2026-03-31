@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mqtt-broker-config
+  namespace: xdr-soar
+data:
+  base.hocon: |
+    authentication = [
+      {
+        backend = "built_in_database"
+        mechanism = "password_based"
+        password_hash_algorithm {
+          name = "sha256"
+          salt_position = "suffix"
+        }
+        user_id_type = "username"
+        bootstrap_file = "/opt/emqx/etc/auth-built-in-db-bootstrap.csv"
+        bootstrap_type = "plain"
+      }
+    ]
+
+    authorization = [
+      {
+        type = "built_in_database"
+        enable = true
+      }
+    ]
+
+    listeners.ssl.default {
+      bind = "0.0.0.0:8883"
+
+      ssl_options {
+        cacertfile = "/opt/emqx/etc/certs/ca.crt"
+        certfile = "/opt/emqx/etc/certs/tls.crt"
+        keyfile = "/opt/emqx/etc/certs/tls.key"
+        verify = verify_none
+        fail_if_no_peer_cert = false
+      }
+    }
+  auth-built-in-db-bootstrap.csv: |
+    user_id,password,is_superuser
+    ${XDR_SOAR_MQTT_USERNAME},${XDR_SOAR_MQTT_PASSWORD},false

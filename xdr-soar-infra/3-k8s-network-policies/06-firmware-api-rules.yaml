@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-firmware-api-ingress
+  namespace: xdr-soar
+spec:
+  podSelector:
+    matchLabels:
+      app: firmware-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector: {}
+    - ipBlock:
+        cidr: 192.168.100.0/24
+    ports:
+    - protocol: TCP
+      port: 8081
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-firmware-api-egress
+  namespace: xdr-soar
+spec:
+  podSelector:
+    matchLabels:
+      app: firmware-api
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mongodb
+    ports:
+    - protocol: TCP
+      port: 27017

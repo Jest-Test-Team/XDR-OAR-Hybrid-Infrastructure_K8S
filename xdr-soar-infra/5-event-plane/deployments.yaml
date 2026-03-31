@@ -1,0 +1,190 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-gateway
+  namespace: xdr-soar
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ingest-gateway
+  template:
+    metadata:
+      labels:
+        app: ingest-gateway
+    spec:
+      containers:
+      - name: ingest-gateway
+        image: ingest-gateway:v1.0.0
+        env:
+        - name: PORT
+          value: "8082"
+        - name: SCHEMA_VERSION
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: SCHEMA_VERSION
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: KAFKA_TOPIC
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQ_BRIDGE_INPUT_TOPIC
+        - name: MQTT_BROKER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQTT_BROKER_HOST
+        - name: MQTT_BROKER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQTT_BROKER_PORT
+        - name: EVENT_INGEST_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: EVENT_INGEST_PATH
+        ports:
+        - containerPort: 8082
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mq-bridge
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mq-bridge
+  template:
+    metadata:
+      labels:
+        app: mq-bridge
+    spec:
+      containers:
+      - name: mq-bridge
+        image: mq-bridge:v1.0.0
+        env:
+        - name: PORT
+          value: "8093"
+        - name: INPUT_TOPIC
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQ_BRIDGE_INPUT_TOPIC
+        - name: OUTPUT_TOPIC
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQ_BRIDGE_OUTPUT_TOPIC
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: KAFKA_GROUP_ID
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: STREAM_PROCESSOR_GROUP_ID
+        - name: MQTT_BROKER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQTT_BROKER_HOST
+        - name: MQTT_BROKER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: MQTT_BROKER_PORT
+        ports:
+        - containerPort: 8093
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8093
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stream-processor
+  namespace: xdr-soar
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: stream-processor
+  template:
+    metadata:
+      labels:
+        app: stream-processor
+    spec:
+      containers:
+      - name: stream-processor
+        image: stream-processor:v1.0.0
+        env:
+        - name: PORT
+          value: "8094"
+        - name: SOURCE_TOPIC
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: STREAM_PROCESSOR_SOURCE_TOPIC
+        - name: SINK_TOPIC
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: STREAM_PROCESSOR_SINK_TOPIC
+        - name: SCHEMA_VERSION
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: SCHEMA_VERSION
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: event-plane-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        ports:
+        - containerPort: 8094
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8094
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi

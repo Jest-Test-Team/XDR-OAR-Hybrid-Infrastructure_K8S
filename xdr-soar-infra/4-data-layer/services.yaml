@@ -62,6 +62,21 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: mqtt-broker-external
+  namespace: xdr-soar
+spec:
+  type: ${XDR_SOAR_MQTT_SERVICE_TYPE}
+  ports:
+  - name: mqtt-tls
+    port: 8883
+    targetPort: 8883
+    nodePort: ${XDR_SOAR_MQTT_NODE_PORT}
+  selector:
+    app: mqtt-broker
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: redis
   namespace: xdr-soar
 spec:
@@ -70,15 +85,3 @@ spec:
     targetPort: 6379
   selector:
     app: redis
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: supabase
-  namespace: xdr-soar
-spec:
-  ports:
-  - port: 5432
-    targetPort: 5432
-  selector:
-    app: supabase

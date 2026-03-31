@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ${XDR_SOAR_CERT_MANAGER_CLUSTER_ISSUER}
+spec:
+  acme:
+    email: ${XDR_SOAR_ACME_EMAIL}
+    server: ${XDR_SOAR_ACME_SERVER}
+    privateKeySecretRef:
+      name: ${XDR_SOAR_CERT_MANAGER_CLUSTER_ISSUER}-account-key
+    solvers:
+    - http01:
+        ingress:
+          ingressClassName: ${XDR_SOAR_INGRESS_CLASS}

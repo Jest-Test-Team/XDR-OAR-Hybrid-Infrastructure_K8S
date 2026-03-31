@@ -1,0 +1,15 @@
+{
+  "MqttBroker": "mqtt.soar.example.com",
+  "MqttPort": 8883,
+  "MqttTopic": "/agent/update",
+  "MqttKeepAliveSeconds": 30,
+  "MqttUsername": "agent-updater",
+  "MqttPassword": "store-in-windows-credential-manager",
+  "ServerCertificateThumbprint": "0123456789ABCDEF0123456789ABCDEF01234567",
+  "UpdateApiUrl": "https://api.soar.example.com/v1/firmware",
+  "AgentServiceName": "WatchdogAgent",
+  "AgentBinaryPath": "C:\\Program Files\\XDR\\agent.exe",
+  "TempDir": "C:\\Windows\\Temp\\XDR-Update",
+  "BackupDir": "C:\\ProgramData\\XDR\\Backups",
+  "ReconnectDelaySeconds": 5
+}

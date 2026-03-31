@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: mongodb
-        image: mongo:6.0.14
+        image: mongo:6.0.14@sha256:35a7e5f80601629494216601b06c759b9f89db8876a47f33a14e4c40b5960efa
         env:
         - name: MONGO_INITDB_ROOT_USERNAME
           valueFrom:

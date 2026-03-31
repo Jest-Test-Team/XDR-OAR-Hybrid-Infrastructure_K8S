@@ -52,6 +52,9 @@ spec:
     - podSelector:
         matchLabels:
           app: ml-retraining
+    - podSelector:
+        matchLabels:
+          app: firmware-api
     ports:
     - protocol: TCP
       port: 27017
@@ -79,22 +82,31 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-supabase-ingress
+  name: allow-supabase-db-ingress
   namespace: xdr-soar
 spec:
   podSelector:
     matchLabels:
-      app: supabase
+      app: supabase-db
   policyTypes:
   - Ingress
   ingress:
   - from:
     - podSelector:
         matchLabels:
-          app: detection-engine
+          app: ml-retraining
     - podSelector:
         matchLabels:
-          app: ml-retraining
+          app: supabase-auth
+    - podSelector:
+        matchLabels:
+          app: supabase-rest
+    - podSelector:
+        matchLabels:
+          app: supabase-meta
+    - podSelector:
+        matchLabels:
+          app: supabase-studio
     ports:
     - protocol: TCP
       port: 5432
@@ -128,10 +140,10 @@ spec:
   - to:
     - podSelector:
         matchLabels:
-          app: supabase
+          app: supabase-gateway
     ports:
     - protocol: TCP
-      port: 5432
+      port: 8000
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: command-dispatcher
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: command-dispatcher
+  template:
+    metadata:
+      labels:
+        app: command-dispatcher
+    spec:
+      containers:
+      - name: command-dispatcher
+        image: command-dispatcher:v1.0.0
+        env:
+        - name: PORT
+          value: "8086"
+        - name: KAFKA_ENABLED
+          value: "true"
+        - name: KAFKA_BROKERS
+          value: "kafka:9092"
+        - name: KAFKA_COMMAND_TOPIC
+          value: "commands.issue"
+        - name: KAFKA_LIFECYCLE_TOPIC
+          value: "commands.lifecycle"
+        - name: KAFKA_GROUP_ID
+          value: "command-dispatcher"
+        - name: MQTT_TOPIC_TEMPLATE
+          value: "jobs/commands/{device_id}"
+        ports:
+        - containerPort: 8086
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8086
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: command-dispatcher
+  namespace: xdr-soar
+spec:
+  ports:
+  - port: 8086
+    targetPort: 8086
+  selector:
+    app: command-dispatcher

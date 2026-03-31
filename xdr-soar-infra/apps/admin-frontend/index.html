@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XDR Admin Panel</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10151f;
+      --card: #162131;
+      --ink: #edf3fb;
+      --muted: #9fb1c6;
+      --accent: #7fe7c4;
+      --border: #25405d;
+    }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", sans-serif;
+      background: radial-gradient(circle at top, #1c2b41 0%, var(--bg) 60%);
+      color: var(--ink);
+    }
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 20px 72px;
+    }
+    .card {
+      background: rgba(22, 33, 49, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.24);
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    code, pre {
+      font-family: "IBM Plex Mono", monospace;
+      background: rgba(9, 13, 20, 0.82);
+      border-radius: 12px;
+    }
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: var(--accent);
+    }
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .metric {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(10, 16, 26, 0.72);
+    }
+    .metric strong {
+      display: block;
+      font-size: 1.1rem;
+      margin-bottom: 6px;
+    }
+    .muted {
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Admin Control Plane</h1>
+      <p class="muted">Use this UI as the human-facing surface for firmware update orchestration, service inspection, and operational quick links.</p>
+    </section>
+
+    <section class="card">
+      <h2>Update Payload Template</h2>
+      <pre>{
+  "action": "update",
+  "version": "2026.03.27",
+  "sha256": "REPLACE_WITH_AGENT_SHA256"
+}</pre>
+      <p class="muted">Publish to MQTT topic <code>/agent/update</code> after the CI pipeline uploads the new binary into GridFS.</p>
+    </section>
+
+    <section class="card">
+      <h2>Linked Services</h2>
+      <div class="grid">
+        <div class="metric">
+          <strong>Grafana</strong>
+          <span class="muted">Route: rendered from the deployment platform domain</span>
+        </div>
+        <div class="metric">
+          <strong>Supabase Studio</strong>
+          <span class="muted">Route: rendered from the deployment platform domain</span>
+        </div>
+        <div class="metric">
+          <strong>SOAR Dashboard</strong>
+          <span class="muted">Route: rendered from the deployment platform domain</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

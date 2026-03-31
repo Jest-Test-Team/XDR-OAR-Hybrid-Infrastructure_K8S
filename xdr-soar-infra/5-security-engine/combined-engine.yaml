@@ -21,10 +21,27 @@ spec:
           value: "http://influxdb:8086"
         - name: KAFKA_BROKERS
           value: "kafka:9092"
+        - name: KAFKA_ENABLED
+          value: "true"
+        - name: KAFKA_SOURCE_TOPIC
+          value: "telemetry.enriched"
+        - name: KAFKA_SIGNAL_TOPIC
+          value: "detections.signals"
+        - name: KAFKA_INCIDENT_TOPIC
+          value: "detections.incidents"
+        - name: KAFKA_GROUP_ID
+          value: "detection-engine"
         - name: SUPABASE_DB_HOST
-          value: "supabase"
+          value: "supabase-db"
         - name: SUPABASE_DB_PORT
           value: "5432"
+        - name: SUPABASE_REST_URL
+          value: "http://supabase/rest/v1/alerts"
+        - name: SUPABASE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: supabase-service-role-key
         ports:
         - containerPort: 8080
         resources:
@@ -58,7 +75,7 @@ spec:
     spec:
       containers:
       - name: triton
-        image: nvcr.io/nvidia/tritonserver:24.01-py3
+        image: nvcr.io/nvidia/tritonserver:24.01-py3@sha256:3380720761045fc16ba3bcb96cfa54034531fc302df54ecac6b2a4deeab07bbd
         args: ["tritonserver", "--model-repository=/models"]
         volumeMounts:
         - name: model-repository
@@ -82,7 +99,8 @@ spec:
           periodSeconds: 20
       volumes:
       - name: model-repository
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: model-repository
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -105,9 +123,14 @@ spec:
             - name: MONGODB_HOST
               value: "mongodb"
             - name: SUPABASE_DB_HOST
-              value: "supabase"
+              value: "supabase-db"
             - name: SUPABASE_DB_PORT
               value: "5432"
+            - name: MODEL_OUTPUT_DIR
+              value: "/models"
+            volumeMounts:
+            - name: model-repository
+              mountPath: /models
             resources:
               requests:
                 cpu: 1000m
@@ -115,6 +138,10 @@ spec:
               limits:
                 cpu: 4000m
                 memory: 8Gi
+          volumes:
+          - name: model-repository
+            persistentVolumeClaim:
+              claimName: model-repository
           restartPolicy: OnFailure
 ---
 apiVersion: apps/v1

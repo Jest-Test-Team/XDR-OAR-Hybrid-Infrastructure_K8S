@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firmware-api
+  namespace: xdr-soar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firmware-api
+  template:
+    metadata:
+      labels:
+        app: firmware-api
+    spec:
+      containers:
+      - name: firmware-api
+        image: firmware-api:v1.0.0
+        ports:
+        - containerPort: 8081
+        env:
+        - name: PORT
+          value: "8081"
+        - name: MONGO_HOST
+          value: "mongodb"
+        - name: MONGO_PORT
+          value: "27017"
+        - name: MONGO_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: mongodb-root-username
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: xdr-soar-data-layer
+              key: mongodb-root-password
+        - name: MONGO_DATABASE
+          value: "xdr_soar"
+        - name: GRIDFS_FILENAME
+          value: "agent.exe"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
