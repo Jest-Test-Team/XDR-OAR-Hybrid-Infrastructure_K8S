@@ -1,4 +1,3 @@
-
 ```mermaid
 flowchart TB
     subgraph External["外部/開發環境"]
@@ -17,8 +16,12 @@ flowchart TB
             subgraph NS["Namespace: xdr-soar\n[套用 Network Policy: Default Deny All]"]
                 
                 subgraph UI["UI 與人類操作層"]
-                    UI_SOAR["SOAR Dashboard"]
+                    UI_SOAR["User Dashboard"]
                     UI_Admin["Admin Panel"]
+                end
+                 subgraph UI-API["操作層後端"]
+                    UI_SOAR["User API"]
+                    UI_Admin["Admin API"]
                 end
 
                 subgraph Engine["核心運算與掃描引擎"]
@@ -39,12 +42,13 @@ flowchart TB
             end
         end
 
-        subgraph WinVM["VM: Windows EDR 測試節點"]
+        subgraph addson["加值服務"]
             direction TB
-            Hardening["[VMX Hardening: VMCI Disabled]"]
-            Agent["EDR Agent / Watchdog"]
-            Updater["PowerShell Updater\n(Listen MQTT / Pull API)"]
-        end
+            
+            otp_verification["generate otp"]
+             payment_verification["3rd party payment"]
+                    
+ end
         
     end
 
@@ -72,8 +76,13 @@ flowchart TB
     %% 引擎處置流
     Det_Eng -- "寫入/查詢趨勢" --> Influx
     Det_Eng -- "寫入關聯告警" --> Supa
+    UI-API -- "CRUD rbac/abac restful API" --> Supa
     
     %% YARA 動態分析流
     Yara -- "僅允許讀取樣本" --> Mongo
     Yara -- "回傳掃描結果" --> Kafka
-    ```
+    
+    %% 加值
+    payment_verification -- "回傳付款結果" --> otp_verification 
+    otp_verification  -- "回傳付款結果到db做紀錄" --> UI-API 
+```
