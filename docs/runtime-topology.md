@@ -58,6 +58,7 @@ Current in-repo services:
 - `firmware-api`
 - `soar-api`
 - `command-dispatcher`
+- `command-reconciler`
 - static `admin-frontend`
 - static `soar-dashboard`
 
@@ -69,6 +70,8 @@ Current maturity:
 - `soar-api` now performs basic incident-to-playbook matching and approval/command state transitions
 - `soar-api` now exposes audit records and optional persistence targets for core control-plane objects
 - `command-dispatcher` now consumes `commands.issue` and emits `commands.lifecycle`
+- `command-reconciler` now consumes `commands.lifecycle` and tracks command state transitions
+- `soar-api` now also consumes `commands.lifecycle` so API-visible command records reflect dispatch, ACK, completion, and failure states
 - playbook/approval/command workflows are still placeholder-level overall
 
 ## Target Event Flow
@@ -90,6 +93,8 @@ Recommended target path:
 10. `soar-api` performs basic playbook matching, approval decisions, and command status transitions
 11. `soar-api` records audit events and can persist incidents/playbooks/commands/approvals/audit logs via Supabase REST
 12. `command-dispatcher` consumes approved/queued commands and emits lifecycle records for dispatch
+13. `command-reconciler` consumes lifecycle events and ingests ACK/result-style updates into reconciled command state
+14. `soar-api` consumes `commands.lifecycle` and updates operator-facing command records
 
 ## Current Topic Model
 
@@ -138,7 +143,7 @@ This is a preparation step for real client integration and keeps the deployment 
 The following are still not implemented:
 
 - real MQTT or AMQP client connectivity in the event-plane services
-- command ACK/result reconciliation services
+- durable command ACK/result persistence in the control plane data model
 - AXIOM-style multi-layer rule evaluation
 - real playbook execution and durable workflow orchestration
 
@@ -146,7 +151,7 @@ The following are still not implemented:
 
 The next meaningful runtime step is:
 
-- add command ACK/result ingestion and reconciliation on top of `commands.lifecycle`
+- move command lifecycle reconciliation from cache-level updates to durable relational persistence and queryable workflow state
 
 After that:
 
@@ -162,9 +167,9 @@ Estimated progress by phase:
 - Phase 0 Contracts and topology: `100%`
 - Phase 1 Event plane transport and normalization: `85%`
 - Phase 2 Detection and incident generation: `45%`
-- Phase 3 SOAR control plane: `58%`
+- Phase 3 SOAR control plane: `74%`
 - Phase 4 UI and external integrations: `10%`
 
 Estimated overall repo expansion progress:
 
-- `66%`
+- `73%`

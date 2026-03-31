@@ -23,6 +23,7 @@ PORT = int(os.getenv("PORT", "8085"))
 KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "")
 KAFKA_INCIDENT_TOPIC = os.getenv("KAFKA_INCIDENT_TOPIC", "detections.incidents")
 KAFKA_COMMAND_TOPIC = os.getenv("KAFKA_COMMAND_TOPIC", "commands.issue")
+KAFKA_LIFECYCLE_TOPIC = os.getenv("KAFKA_LIFECYCLE_TOPIC", "commands.lifecycle")
 KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "soar-api")
 KAFKA_ENABLED = os.getenv("KAFKA_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
 SUPABASE_INCIDENTS_URL = os.getenv("SUPABASE_INCIDENTS_URL", "").rstrip("/")
@@ -66,6 +67,7 @@ METRICS = {
     "playbook_matches_total": 0,
     "approval_decisions_total": 0,
     "command_status_updates_total": 0,
+    "command_lifecycle_events_total": 0,
     "audit_events_total": 0,
     "audit_persist_failures_total": 0,
 }
@@ -107,6 +109,9 @@ def render_metrics() -> str:
             "# HELP soar_api_command_status_updates_total Number of command status updates.",
             "# TYPE soar_api_command_status_updates_total counter",
             f"soar_api_command_status_updates_total {METRICS['command_status_updates_total']}",
+            "# HELP soar_api_command_lifecycle_events_total Number of command lifecycle events consumed from Kafka.",
+            "# TYPE soar_api_command_lifecycle_events_total counter",
+            f"soar_api_command_lifecycle_events_total {METRICS['command_lifecycle_events_total']}",
             "# HELP soar_api_audit_events_total Number of audit events recorded.",
             "# TYPE soar_api_audit_events_total counter",
             f"soar_api_audit_events_total {METRICS['audit_events_total']}",
@@ -300,6 +305,59 @@ def maybe_start_consumer() -> None:
     worker.start()
 
 
+def update_command_from_lifecycle(event: dict) -> None:
+    command_id = event.get("command_id")
+    if not command_id:
+        return
+
+    command = find_by_id(COMMANDS, "command_id", command_id)
+    if command is None:
+        command = {
+            "command_id": command_id,
+            "correlation_id": event.get("correlation_id"),
+            "tenant_id": event.get("tenant_id"),
+            "device_id": event.get("device_id"),
+            "incident_id": event.get("incident_id"),
+            "playbook_id": event.get("playbook_id"),
+            "playbook_version": event.get("playbook_version", "0.1.0"),
+            "command_type": event.get("command_type"),
+            "requires_presence": bool(event.get("requires_presence", False)),
+            "approval_required": bool(event.get("approval_required", False)),
+            "risk_level": event.get("risk_level", "R1"),
+            "payload": event.get("payload", {}),
+            "issued_at": event.get("timestamp") or int(time.time()),
+            "status": event.get("status", "unknown"),
+            "schema_version": event.get("schema_version", "1.0.0"),
+        }
+        store_limited(COMMANDS, command)
+    else:
+        command["correlation_id"] = event.get("correlation_id", command.get("correlation_id"))
+        command["tenant_id"] = event.get("tenant_id", command.get("tenant_id"))
+        command["device_id"] = event.get("device_id", command.get("device_id"))
+        command["incident_id"] = event.get("incident_id", command.get("incident_id"))
+        command["playbook_id"] = event.get("playbook_id", command.get("playbook_id"))
+        command["command_type"] = event.get("command_type", command.get("command_type"))
+        command["status"] = event.get("status", command.get("status"))
+        command["updated_at"] = event.get("timestamp") or int(time.time())
+        if "dispatch" in event:
+            command["dispatch"] = event["dispatch"]
+        if "result" in event:
+            command["result"] = event["result"]
+
+    METRICS["command_status_updates_total"] += 1
+    METRICS["command_lifecycle_events_total"] += 1
+    if SUPABASE_COMMANDS_URL:
+        persist_record(SUPABASE_COMMANDS_URL, command)
+    append_audit(
+        "command_lifecycle_consumed",
+        {
+            "command_id": command["command_id"],
+            "status": command.get("status"),
+            "topic": KAFKA_LIFECYCLE_TOPIC,
+        },
+    )
+
+
 def publish_command(command: dict) -> bool:
     if not KAFKA_ENABLED or not KAFKA_BROKERS.strip() or KafkaProducer is None:
         return False
@@ -342,28 +400,38 @@ def kafka_worker() -> None:
         try:
             consumer = KafkaConsumer(
                 KAFKA_INCIDENT_TOPIC,
+                KAFKA_LIFECYCLE_TOPIC,
                 bootstrap_servers=brokers,
                 group_id=KAFKA_GROUP_ID,
                 enable_auto_commit=True,
                 auto_offset_reset="latest",
                 value_deserializer=lambda value: json.loads(value.decode("utf-8")),
             )
-            print(f"soar-api: consuming incidents from {KAFKA_INCIDENT_TOPIC}", flush=True)
+            print(
+                f"soar-api: consuming incidents from {KAFKA_INCIDENT_TOPIC} and lifecycle from {KAFKA_LIFECYCLE_TOPIC}",
+                flush=True,
+            )
 
             for message in consumer:
-                incident = message.value if isinstance(message.value, dict) else {}
-                METRICS["incidents_consumed_total"] += 1
-                store_incident(incident)
-                append_audit("incident_consumed", {
-                    "incident_id": incident.get("incident_id"),
-                    "device_id": incident.get("device_id"),
-                    "risk_score": incident.get("risk_score"),
-                })
-                maybe_create_followup_records(incident)
-                if persist_incident(incident):
-                    METRICS["incidents_persisted_total"] += 1
-                elif SUPABASE_INCIDENTS_URL:
-                    METRICS["incident_persist_failures_total"] += 1
+                payload = message.value if isinstance(message.value, dict) else {}
+                if message.topic == KAFKA_INCIDENT_TOPIC:
+                    incident = payload
+                    METRICS["incidents_consumed_total"] += 1
+                    store_incident(incident)
+                    append_audit("incident_consumed", {
+                        "incident_id": incident.get("incident_id"),
+                        "device_id": incident.get("device_id"),
+                        "risk_score": incident.get("risk_score"),
+                    })
+                    maybe_create_followup_records(incident)
+                    if persist_incident(incident):
+                        METRICS["incidents_persisted_total"] += 1
+                    elif SUPABASE_INCIDENTS_URL:
+                        METRICS["incident_persist_failures_total"] += 1
+                    continue
+
+                if message.topic == KAFKA_LIFECYCLE_TOPIC:
+                    update_command_from_lifecycle(payload)
         except Exception as exc:
             print(f"soar-api: kafka worker error: {exc}", flush=True)
             time.sleep(5)
@@ -394,6 +462,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                         "kafka_brokers": KAFKA_BROKERS or None,
                         "kafka_incident_topic": KAFKA_INCIDENT_TOPIC,
                         "kafka_command_topic": KAFKA_COMMAND_TOPIC,
+                        "kafka_lifecycle_topic": KAFKA_LIFECYCLE_TOPIC,
                         "kafka_group_id": KAFKA_GROUP_ID,
                         "kafka_enabled": KAFKA_ENABLED,
                         "supabase_incidents_url": SUPABASE_INCIDENTS_URL or None,

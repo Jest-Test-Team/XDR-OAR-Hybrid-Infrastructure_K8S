@@ -241,6 +241,13 @@ Recommended topics:
 - `commands.issue`
 - `commands.lifecycle`
 
+Current in-repo usage:
+
+- `soar-api` publishes approved or auto-queued commands to `commands.issue`
+- `command-dispatcher` consumes `commands.issue` and emits `commands.lifecycle`
+- `command-reconciler` consumes `commands.lifecycle` and can publish ack/result-style updates back into the same topic
+- `soar-api` now also consumes `commands.lifecycle` so operator-facing command records reflect dispatch and reconciliation state
+
 ## Approval And Presence Semantics
 
 Messaging must not be the source of approval truth.

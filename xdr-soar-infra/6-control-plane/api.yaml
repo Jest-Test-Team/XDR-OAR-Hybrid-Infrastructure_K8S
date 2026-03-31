@@ -27,6 +27,8 @@ spec:
           value: "detections.incidents"
         - name: KAFKA_COMMAND_TOPIC
           value: "commands.issue"
+        - name: KAFKA_LIFECYCLE_TOPIC
+          value: "commands.lifecycle"
         - name: KAFKA_GROUP_ID
           value: "soar-api"
         - name: SUPABASE_INCIDENTS_URL

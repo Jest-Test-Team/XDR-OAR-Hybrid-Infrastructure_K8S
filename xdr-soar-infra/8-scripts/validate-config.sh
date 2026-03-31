@@ -56,6 +56,7 @@ if command -v python3 >/dev/null 2>&1; then
     "$ROOT_DIR/apps/detection-engine/main.py" \
     "$ROOT_DIR/apps/ml-training/main.py" \
     "$ROOT_DIR/apps/command-dispatcher/main.py" \
+    "$ROOT_DIR/apps/command-reconciler/main.py" \
     "$ROOT_DIR/apps/soar-api/main.py" \
     "$ROOT_DIR/apps/yara-scanner/main.py"
 else
@@ -132,7 +133,7 @@ if rg -n 'image: .*:latest' "$ROOT_DIR" -g '*.yaml' -g '*.yml' >/dev/null; then
 fi
 
 echo "[$(date)] Checking for third-party images missing digests..."
-UNPINNED_THIRD_PARTY_IMAGES="$(rg -n 'image:\s*[^[:space:]@]+:[^[:space:]@]+$' "$ROOT_DIR" -g '*.yaml' -g '*.yml' | rg -v 'image:\s*(custom-engine|ml-training|custom-yara|admin-frontend|soar-frontend|firmware-api|ingest-gateway|mq-bridge|stream-processor|soar-api|command-dispatcher):' || true)"
+UNPINNED_THIRD_PARTY_IMAGES="$(rg -n 'image:\s*[^[:space:]@]+:[^[:space:]@]+$' "$ROOT_DIR" -g '*.yaml' -g '*.yml' | rg -v 'image:\s*(custom-engine|ml-training|custom-yara|admin-frontend|soar-frontend|firmware-api|ingest-gateway|mq-bridge|stream-processor|soar-api|command-dispatcher|command-reconciler):' || true)"
 if [ -n "$UNPINNED_THIRD_PARTY_IMAGES" ]; then
   echo "Found third-party Kubernetes images without immutable digests." >&2
   printf '%s\n' "$UNPINNED_THIRD_PARTY_IMAGES" >&2
