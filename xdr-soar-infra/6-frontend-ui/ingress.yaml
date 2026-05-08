@@ -9,6 +9,7 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-ciphers: ${XDR_SOAR_NGINX_SSL_CIPHERS}
     nginx.ingress.kubernetes.io/server-snippet: |
       ssl_conf_command Groups ${XDR_SOAR_NGINX_SSL_CONF_COMMAND_GROUPS};
+      ssl_conf_command SigAlgs ${XDR_SOAR_NGINX_SSL_CONF_COMMAND_SIGALGS};
 spec:
   ingressClassName: ${XDR_SOAR_INGRESS_CLASS}
   tls:
