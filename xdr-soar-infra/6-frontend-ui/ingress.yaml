@@ -5,6 +5,10 @@ metadata:
   namespace: xdr-soar
   annotations:
     cert-manager.io/cluster-issuer: ${XDR_SOAR_CERT_MANAGER_CLUSTER_ISSUER}
+    nginx.ingress.kubernetes.io/ssl-protocols: ${XDR_SOAR_NGINX_SSL_PROTOCOLS}
+    nginx.ingress.kubernetes.io/ssl-ciphers: ${XDR_SOAR_NGINX_SSL_CIPHERS}
+    nginx.ingress.kubernetes.io/server-snippet: |
+      ssl_conf_command Groups ${XDR_SOAR_NGINX_SSL_CONF_COMMAND_GROUPS};
 spec:
   ingressClassName: ${XDR_SOAR_INGRESS_CLASS}
   tls:
